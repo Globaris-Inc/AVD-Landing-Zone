@@ -49,6 +49,34 @@
 
 ## Sessions
 
+### Session 2026-06-11 (j) — Sections 1–5 audit + grouped fix branches
+
+**Goal:** Holistic `code-reviewer` audit of Sections 1–5; bugs fixed by `cloud-engineer` on **separate
+branches grouped by fix category** (per the audit workflow), left for review/merge — not merged to main.
+
+**Audit verdict:** one blocker + should-fixes/nits. Secret hygiene (zero real IDs) and version pinning
+are **clean**; identity module (§5) and repo structure (§1) clean. The standing **OQ-007** (OIDC
+Owner → Contributor + User Access Administrator) is the biggest open item — resolve before §12 CI.
+
+**Fix branches (each validated, staggered commit times, no AI-attribution trailer):**
+- **`fix/networking-toggle-correctness`** (`a92f7b7`) — 🔴 **BLOCKER fix:** `deploy_networking = false`
+  null-dereferenced `local.networking` at plan (my §6 precondition only guarded the DNS link, not the
+  module input). Gated the whole FSLogix block (DNS zone, link, storage module) on the toggle via
+  `for_each`, guarded the outputs with `try()`, corrected the over-promising `deploy_networking` desc.
+- **`fix/bootstrap-security`** (`d9cb9bd`) — added the missing `dataClassification` minimum tag;
+  restricted the bootstrap Key Vault to the IP allow-list (`network_acls` Deny + AzureServices bypass);
+  documented the intentional singleton-RG naming deviation.
+- **`fix/naming-tagging`** (`3edd7af`) — added the region token to the FSLogix storage account name;
+  documented the acceptable shared-RG environment-tag choice.
+- **`fix/networking-nsg`** (`041e7f7`) — comments only: NSG rules deliberately restate platform defaults;
+  noted the `NetworkSecurityGroupEnabled` PE-subnet alternative. No behavior change.
+
+**Merge guidance:** Group 1 is the only functional fix — merge it first. Branches are **local** (no
+GitHub remote yet); push to open PRs. `main` unchanged at `185f3d4`. Minor: Groups 1 & 3 both touch
+`landing-zones/avd-workload/main.tf` but in different regions — expect a clean (or trivial) merge.
+
+---
+
 ### Session 2026-06-10 (i) — Section 6: FSLogix profile storage 🟢 (first reviewer-gated section)
 
 **Goal:** Identity-joined premium Azure Files for FSLogix profiles, via the AVM storage module, with a
