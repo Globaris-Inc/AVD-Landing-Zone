@@ -29,3 +29,7 @@ firewall_private_ip            = "" # set to the platform firewall private IP to
 identity_mode = "entra-id-join"
 # domain_fqdn    = "corp.contoso.com"   # only for entra-ds / ad-ds
 # domain_ou_path = "OU=AVD,DC=corp,DC=contoso,DC=com"
+
+# --- FSLogix storage (Section 6) ---
+fslogix_share_quota_gb           = 128
+fslogix_account_replication_type = "ZRS"

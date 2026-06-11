@@ -152,3 +152,35 @@ variable "domain_ou_path" {
   type        = string
   default     = ""
 }
+
+# ---------------------------------------------------------------------------
+# FSLogix storage (Section 6)
+# ---------------------------------------------------------------------------
+
+variable "fslogix_share_quota_gb" {
+  description = "FSLogix profile share quota in GiB. Premium FileStorage requires greater than 100."
+  type        = number
+  default     = 128
+
+  validation {
+    condition     = var.fslogix_share_quota_gb > 100
+    error_message = "fslogix_share_quota_gb must be greater than 100 (Premium FileStorage minimum)."
+  }
+}
+
+variable "fslogix_account_replication_type" {
+  description = "Replication for the premium FileStorage account (LRS or ZRS)."
+  type        = string
+  default     = "ZRS"
+
+  validation {
+    condition     = contains(["LRS", "ZRS"], var.fslogix_account_replication_type)
+    error_message = "fslogix_account_replication_type must be LRS or ZRS."
+  }
+}
+
+variable "file_private_dns_zone_name" {
+  description = "Private DNS zone name for Azure Files private endpoints."
+  type        = string
+  default     = "privatelink.file.core.windows.net"
+}
