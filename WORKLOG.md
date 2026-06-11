@@ -12,11 +12,11 @@
 | --- | ------- | ------ | ------------ | ----- |
 | — | Rules & controls (CLAUDE.md, PROMPT.md, DECISIONS.md) | 🟢 Complete | 2026-06-10 | Governance established; ADR-0001 |
 | 1 | Repository Structure (re-pattern + drop Bicep) | 🟢 Complete | 2026-06-10 | Bicep removed; reference layout created; docs migrated to root |
-| 2 | Bootstrap — OIDC, state backend, providers | 🟢 Complete* | 2026-06-10 | bootstrap/ (CMK state SA + OIDC) + envs/*.backend.hcl. *Unvalidated — no terraform in env; run fmt/validate in CI |
-| 3 | Resource organization, naming & tagging | ⬜ Next | — | Composition root + naming/tagging locals |
-| 4 | Networking (spoke) | ⬜ Not started | — | |
-| 5 | Identity & domain join | ⬜ Not started | — | Blocked on OQ-006 (identity model) |
-| 6 | FSLogix profile storage | ⬜ Not started | — | |
+| 2 | Bootstrap — OIDC, state backend, providers | 🟢 Complete | 2026-06-10 | bootstrap/ (CMK state SA + OIDC) + envs/*.backend.hcl. ✅ `terraform validate` clean (2 deprecations fixed) |
+| 3 | Resource organization, naming & tagging | 🟢 Complete | 2026-06-10 | Composition root (providers/vars/locals/RGs/outputs) + envs/*.tfvars. ✅ `terraform validate` clean |
+| 4 | Networking (spoke) | 🟢 Complete | 2026-06-10 | modules/networking + wired to root (azapi added). ✅ `terraform validate` clean |
+| 5 | Identity & domain join | 🟢 Complete | 2026-06-10 | entra-id-join (ADR-0003); modules/identity-join + wired. ✅ `terraform validate` clean |
+| 6 | FSLogix profile storage | ⬜ Next | — | Azure Files Premium, AADKERB, private endpoint |
 | 7 | Security — Key Vault, private endpoints, DNS | ⬜ Not started | — | |
 | 8 | Management plane | ⬜ Not started | — | |
 | 9 | Session hosts | ⬜ Not started | — | |
@@ -38,11 +38,131 @@
 | `CLAUDE.md`, `PROMPT.md`, `DECISIONS.md`, `OPEN-QUESTIONS.md`, `WORKLOG.md` | `chore(governance): establish rules & controls — CLAUDE/PROMPT/DECISIONS (Terraform-only, ADR-0001)` |
 | repo-wide (remove `infra/`, add layout, migrate docs, retarget subagents) | `refactor(structure): re-pattern to reference layout; drop Bicep (Section 1)` |
 | `bootstrap/*`, `envs/*.backend.hcl`, `.gitignore`, `DECISIONS.md`, `OPEN-QUESTIONS.md` | `feat(bootstrap): state backend (CMK) + GitHub OIDC identity (Section 2, ADR-0002)` |
+| `landing-zones/avd-workload/*`, `envs/{dev,prod}.tfvars` | `feat(workload): composition root + workload/shared RGs, naming & tags (Section 3)` |
+| `modules/networking/*`, `landing-zones/avd-workload/*`, `envs/{dev,prod}.tfvars` | `feat(networking): spoke VNet/NSG/ASG/route table from AVM + wire to root (Section 4)` |
+| `modules/identity-join/*`, `landing-zones/avd-workload/*`, `envs/*`, `DECISIONS.md`, `OPEN-QUESTIONS.md` | `feat(identity): Entra ID join config module + wire to root (Section 5, ADR-0003)` |
+| `bootstrap/main.tf`, `bootstrap/.terraform.lock.hcl`, `landing-zones/avd-workload/.terraform.lock.hcl`, `envs/*.tfvars` | `chore: fix azurerm deprecations + commit provider lockfiles (local validation)` |
 | (existing scaffold) | `chore(bootstrap): scaffold AVD LZ — docs + role subagents (pre-re-pattern)` |
 
 ---
 
 ## Sessions
+
+### Session 2026-06-10 (h) — Local validation (Terraform installed)
+
+**Goal:** Install Terraform and validate everything authored so far instead of deferring to CI.
+
+**Tooling:** Terraform **v1.15.6** installed user-scope to `C:\Users\willi\tools\terraform` (added to the
+user PATH for new shells; in-session PowerShell must prepend it to `$env:Path`). No admin required.
+
+**Ran:**
+- `terraform fmt -recursive` — all `.tf` already canonical; reformatted `envs/{dev,prod}.tfvars` only.
+- `terraform -chdir=bootstrap init -backend=false && validate` → **valid**. Fixed two azurerm
+  deprecations: `enable_rbac_authorization` → `rbac_authorization_enabled`; immutability policy source
+  `azurerm_storage_container.tfstate.resource_manager_id` → `.id`. Re-validated → **clean, no warnings**.
+- `terraform -chdir=landing-zones/avd-workload init -backend=false && validate` → **valid, no warnings**.
+  Downloaded the 4 AVM network modules (virtualnetwork 0.17.1, nsg 0.5.1, asg 0.1.1, routetable 0.5.0)
+  and providers azurerm 4.71.0 / azapi 2.10.0 / modtm 0.4.0 / random 3.9.0. Confirms the AVM wiring
+  (parent_id, subnet/peering maps, security_rules), the `for_each` conditional module, and the
+  identity-join module all check out.
+
+**Artifacts:** provider lock files generated — `bootstrap/.terraform.lock.hcl` and
+`landing-zones/avd-workload/.terraform.lock.hcl` (**commit these**). `.terraform/` dirs are gitignored.
+
+**Net effect:** Sections 2–5 are now **validated locally**, not just authored. Next build sections can be
+validated the same way before hand-off.
+
+---
+
+### Session 2026-06-10 (g) — Section 5: Identity & domain join (Entra ID join) 🟢*
+
+**Goal:** Resolve OQ-006 and build the identity-mode plumbing. Built in two pieces (now with a per-piece
+plan presented first, per user preference).
+
+**Decision:** ADR-0003 — `identity_mode = "entra-id-join"` (cloud-only). OQ-006 resolved.
+
+**Files created (`modules/identity-join/`, 5a):** `versions.tf` (no providers — config-only module),
+`variables.tf` (`identity_mode` toggle + `domain_fqdn`/`domain_ou_path`), `main.tf` (locals mapping mode →
+`azure_files_directory_service_options` = **AADKERB** for entra-id-join, AADDS/AD otherwise; `domain_join`
+= null for entra-id-join), `outputs.tf` (`entra_id_join`, `azure_files_directory_service_options`,
+`domain_join`, with a precondition requiring `domain_fqdn` for the domain-join modes).
+
+**Files modified (`landing-zones/avd-workload/`, 5b):** `variables.tf` (+identity_mode/domain vars),
+`main.tf` (+`module "identity_join"` and `local.identity`), `outputs.tf` (+`identity_mode`).
+`envs/{dev,prod}.tfvars` (+`identity_mode = "entra-id-join"`, domain vars commented). Removed gitkeep.
+
+**Validation:** ⚠️ *Unvalidated* — no `terraform` here.
+
+**What's left / next focus:** **Section 6 — FSLogix profile storage:** `modules/fslogix-storage/`
+(Azure Files Premium, identity-based auth using `local.identity.azure_files_directory_service_options`,
+private endpoint to the §4 private-endpoint subnet), via `avm-res-storage-storageaccount`.
+
+---
+
+### Session 2026-06-10 (f) — Section 4: Networking (spoke) 🟢*
+
+**Goal:** Reusable `modules/networking/` (spoke VNet, NSG, ASG, route table, optional hub peering) from
+AVM, wired into the composition root. Built in three pieces.
+
+**AVM modules used (versions verified on the Terraform Registry):**
+`avm-res-network-virtualnetwork` **0.17.1**, `-networksecuritygroup` **0.5.1**,
+`-applicationsecuritygroup` **0.1.1**, `-routetable` **0.5.0**.
+
+**Files created (`modules/networking/`):**
+- `versions.tf` (4a) — provider reqs: azurerm ~> 4.0, **azapi ~> 2.4**, modtm ~> 0.3, random ~> 3.5.
+- `variables.tf` (4a) — module inputs (name_prefix, location, RG name + RG resource id, addressing, optional hub peering + firewall IP).
+- `main.tf` (4b) — NSG (AVD reverse-connect: allow VNet inbound, deny all other inbound), ASG, route
+  table (optional `0.0.0.0/0`→firewall), VNet (`parent_id`; two subnets with NSG/RT associations; PE
+  subnet has `private_endpoint_network_policies = "Disabled"`; optional hub peering). Optional features
+  driven by empty-string toggles via `for_each`-friendly map locals.
+- `outputs.tf` (4b) — subnet IDs, ASG/NSG/RT IDs, VNet ID.
+
+**Files modified (`landing-zones/avd-workload/`, 4c):** `providers.tf` (+azapi provider), `variables.tf`
+(+networking vars), `main.tf` (conditional `module "networking"` via `for_each` on `deploy_networking`;
+`local.networking = one(values(module.networking))`), `outputs.tf` (guarded networking outputs).
+`envs/{dev,prod}.tfvars` (+networking values; dev 10.20.0.0/24, prod 10.30.0.0/24). Removed gitkeep.
+
+**Key findings (verify-before-write):** the VNet module uses **`parent_id`** (RG resource id), not
+`resource_group_name`; `subnets`/`peerings` are **maps**; NSG `security_rules` is a map of flat-attribute
+objects; AVM network modules require the **azapi** provider.
+
+**Validation:** ⚠️ *Unvalidated* — no `terraform` here. `terraform init` (provider resolution incl.
+azapi/modtm) + `validate` must run in CI.
+
+**What's left / next focus:** **Section 5 — Identity & domain join** is **🔴 blocked on OQ-006** — need
+the identity model decision (Entra ID join / Entra DS / AD DS) before building.
+
+---
+
+### Session 2026-06-10 (e) — Section 3: Resource organization, naming & tagging 🟢*
+
+**Goal:** Create the AVD workload composition root with the workload + shared-services resource groups,
+a CAF naming convention, and common tags. Built in three reviewable pieces.
+
+**Files created (`landing-zones/avd-workload/`):**
+- `providers.tf` (3a) — terraform ≥ 1.9 + azurerm ~> 4.71.0 (pinned), partial `azurerm` backend
+  (per-env `-backend-config`), provider with `subscription_id`; CI auth via `ARM_USE_OIDC`.
+- `variables.tf` (3a) — placement inputs (subscription/location/location_short/environment/workload)
+  and tagging inputs (owner/cost_center/criticality/data_classification/tags), with validations.
+- `locals.tf` (3b) — `name_prefix`, `resource_group_names` map, `naming` token object, and
+  `common_tags` (the 7 minimum tags merged with `var.tags`).
+- `main.tf` (3c) — `azurerm_resource_group.this` via **`for_each`** over `resource_group_names`
+  (workload + shared), tagged from `common_tags`.
+- `outputs.tf` (3c) — `resource_group_names` / `resource_group_ids` maps, `location`, `naming`.
+
+**Files created (`envs/`):** `dev.tfvars`, `prod.tfvars` — placeholder values (single subscription;
+prod = criticality high).
+
+**Decision/default:** single-subscription model — both RGs in `var.subscription_id`. A separate
+shared-services subscription (provider alias) is noted as a future option in `main.tf` / ARCHITECTURE.md.
+
+**Validation:** ⚠️ *Unvalidated* — no `terraform` in this environment; run `terraform fmt -recursive`
++ `validate` in CI/tooled session.
+
+**What's left / next focus:** **Section 4 — Networking (spoke):** `modules/networking/` (VNet, NSG,
+ASG, route table) wired from the composition root, with optional hub peering.
+
+---
 
 ### Session 2026-06-10 (d) — Section 2: Bootstrap (OIDC + state backend) 🟢*
 
