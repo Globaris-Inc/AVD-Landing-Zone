@@ -42,3 +42,13 @@ output "identity_mode" {
   description = "Selected session-host identity model."
   value       = module.identity_join.identity_mode
 }
+
+output "fslogix_storage_account_name" {
+  description = "Name of the FSLogix storage account."
+  value       = module.fslogix_storage.storage_account_name
+}
+
+output "fslogix_share_unc_path" {
+  description = "UNC path to the FSLogix profile share (configure on session hosts)."
+  value       = module.fslogix_storage.fslogix_share_unc_path
+}

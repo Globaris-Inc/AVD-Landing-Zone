@@ -35,6 +35,12 @@ This project is built by four collaborating roles, each a Claude Code **subagent
 4. **Code Reviewer** — reviews for correctness, AVM/version-pinning, security, naming/tagging. Verdict:
    approve (merge) or changes requested.
 
+## Per-section review gate (required)
+
+After a section is fully written and `terraform fmt -recursive` / `terraform validate` pass, the
+**`code-reviewer` subagent reviews that section's diff before it is committed**. Blocker findings are
+fixed first; the section is committed only once review is clean.
+
 ## Definition of done (per section)
 - [ ] Design captured (ADR / `ARCHITECTURE.md`) where a real decision was made
 - [ ] Implemented in Terraform, AVM versions pinned, `for_each` not `count`, `common_tags` applied

@@ -16,8 +16,8 @@
 | 3 | Resource organization, naming & tagging | 🟢 Complete | 2026-06-10 | Composition root (providers/vars/locals/RGs/outputs) + envs/*.tfvars. ✅ `terraform validate` clean |
 | 4 | Networking (spoke) | 🟢 Complete | 2026-06-10 | modules/networking + wired to root (azapi added). ✅ `terraform validate` clean |
 | 5 | Identity & domain join | 🟢 Complete | 2026-06-10 | entra-id-join (ADR-0003); modules/identity-join + wired. ✅ `terraform validate` clean |
-| 6 | FSLogix profile storage | ⬜ Next | — | Azure Files Premium, AADKERB, private endpoint |
-| 7 | Security — Key Vault, private endpoints, DNS | ⬜ Not started | — | |
+| 6 | FSLogix profile storage | 🟢 Complete | 2026-06-10 | Premium FileStorage (AADKERB) + file private endpoint + privatelink.file zone. ✅ validate clean; reviewer-gated |
+| 7 | Security — Key Vault, private endpoints, DNS | ⬜ Next | — | Key Vault + PE + privatelink.vaultcore zone |
 | 8 | Management plane | ⬜ Not started | — | |
 | 9 | Session hosts | ⬜ Not started | — | |
 | 10 | Monitoring — AVD Insights | ⬜ Not started | — | |
@@ -42,11 +42,48 @@
 | `modules/networking/*`, `landing-zones/avd-workload/*`, `envs/{dev,prod}.tfvars` | `feat(networking): spoke VNet/NSG/ASG/route table from AVM + wire to root (Section 4)` |
 | `modules/identity-join/*`, `landing-zones/avd-workload/*`, `envs/*`, `DECISIONS.md`, `OPEN-QUESTIONS.md` | `feat(identity): Entra ID join config module + wire to root (Section 5, ADR-0003)` |
 | `bootstrap/main.tf`, `bootstrap/.terraform.lock.hcl`, `landing-zones/avd-workload/.terraform.lock.hcl`, `envs/*.tfvars` | `chore: fix azurerm deprecations + commit provider lockfiles (local validation)` |
+| `modules/fslogix-storage/*`, `landing-zones/avd-workload/*`, `envs/*.tfvars`, `docs/workflow.md`, lockfile | `feat(storage): FSLogix premium Azure Files + private endpoint (Section 6)` |
 | (existing scaffold) | `chore(bootstrap): scaffold AVD LZ — docs + role subagents (pre-re-pattern)` |
 
 ---
 
 ## Sessions
+
+### Session 2026-06-10 (i) — Section 6: FSLogix profile storage 🟢 (first reviewer-gated section)
+
+**Goal:** Identity-joined premium Azure Files for FSLogix profiles, via the AVM storage module, with a
+private endpoint. Built in pieces 6a/6b/6c; first section run through the new `code-reviewer` gate.
+
+**Files created (`modules/fslogix-storage/`):** `versions.tf`, `variables.tf`, `main.tf`, `outputs.tf` —
+`avm-res-storage-storageaccount` **0.7.2**: Premium FileStorage, `azure_files_authentication.directory_type`
+= AADKERB (from the identity module), `fslogix` share, `public_network_access_enabled=false`,
+`shared_access_key_enabled=false`, network_rules Deny, file private endpoint.
+
+**Files modified (`landing-zones/avd-workload/`, 6c):** `main.tf` (FSLogix name local; **native**
+`azurerm_private_dns_zone.file` + vnet link with `# DEVIATION`; `module "fslogix_storage"`), `variables.tf`,
+`outputs.tf`. `envs/{dev,prod}.tfvars` (+FSLogix vars). Also `docs/workflow.md` (added the per-section
+reviewer gate).
+
+**Decisions:** privatelink.file zone created in §6 (vaultcore in §7); native `azurerm_private_dns_zone`
+(DEVIATION — trivial resource, avoids AVM pdns azapi/time deps). Both user-approved.
+
+**Code-reviewer findings (all addressed, re-validated clean):**
+- **B1 (blocker):** AVM 0.7.2 `account_sku_name` defaults to `Standard_ZRS` and wins via `coalesce()`, so
+  `account_tier="Premium"` was silently ignored → would deploy `Standard_ZRS`+`FileStorage` (invalid). Fixed:
+  set `account_sku_name = "Premium_${var.account_replication_type}"`.
+- **S1:** Premium share quota must be > 100 → default 100→128 (+validation) in module/root/envs.
+- **S3:** added a `precondition` so `deploy_networking=false` errors clearly instead of null-dereferencing.
+- **N2:** added LRS/ZRS validation on the root replication var.
+
+**Environment note:** `git config --global core.longpaths true` is **required on Windows** — the AVM storage
+module pulls deeply-nested helper modules (avm-utl-interfaces) that exceed MAX_PATH otherwise.
+
+**Validation:** `terraform validate` ✅ clean (before and after review fixes).
+
+**What's left / next focus:** **Section 7 — Security:** Key Vault (RBAC, private endpoint) + the
+`privatelink.vaultcore.azure.net` zone (same native-DNS pattern as §6).
+
+---
 
 ### Session 2026-06-10 (h) — Local validation (Terraform installed)
 
