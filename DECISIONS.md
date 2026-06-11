@@ -80,3 +80,36 @@ repo `Azure-Architecture`, adapted for an **application** landing zone.
 - **Service principal with a client secret** — rejected: secrets in CI.
 - **Owner at Tenant Root MG** (as in the reference) — rejected: platform/MG scope, out of scope here.
 - **No CMK / platform-managed keys** — viable, but CMK matches the enterprise-grade reference posture.
+
+---
+
+## ADR-0003 — Session-host identity model: Microsoft Entra ID join
+
+- **Status:** Accepted
+- **Date:** 2026-06-10
+- **Deciders:** Project owner + Cloud Solutions Architect (resolves OQ-006)
+
+### Context
+The session hosts need an identity/join model; it drives the session-host join configuration and the
+FSLogix Azure Files authentication mode. PROMPT.md §5 exposes a `identity_mode` toggle.
+
+### Decision
+**Microsoft Entra ID join** (cloud-only) is the baseline.
+- Session hosts join Entra ID via the **`AADLoginForWindows`** VM extension (wired in §9).
+- FSLogix on Azure Files authenticates with **Entra Kerberos** — `directory_service_options = "AADKERB"`
+  (wired in §6).
+- **No domain controllers / Entra DS are deployed here** — the identity platform is a prerequisite
+  (out of scope). For `entra-ds`/`ad-ds` the module only produces *domain-join configuration* (FQDN/OU
+  + Key Vault credential references) pointing at the platform-provided domain.
+- The `identity_mode` toggle (`entra-id-join` | `entra-ds` | `ad-ds`) is retained for portability; only
+  `entra-id-join` is realised now.
+
+### Consequences
+- **Pro:** simplest and cloud-native; no DC infrastructure; integrates with Conditional Access + SSO;
+  Entra Kerberos removes the need for AD DS to use Azure Files.
+- **Con:** legacy/Kerberos-dependent apps may still require AD DS (revisit per workload); Entra Kerberos
+  has prerequisites (storage Entra Kerberos config, client OS support); SSO/CA must be configured.
+
+### Alternatives considered
+- **Microsoft Entra Domain Services** — managed domain; more cost/ops, useful for legacy auth.
+- **Self-managed AD DS** — full control, most operational overhead; DCs are platform scope.
