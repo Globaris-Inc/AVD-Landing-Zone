@@ -14,16 +14,14 @@ application landing zone creates **role assignments** (AVD/storage RBAC), which 
 If reducing, confirm whether any resource needs broader rights. (See DECISIONS.md ADR-0002, `bootstrap/identity.tf`.)
 **Resolution:** _pending_
 
-### OQ-006 — Identity model for session hosts
-AVD session-host domain join: Microsoft Entra ID join, Microsoft Entra Domain Services, or self-managed
-AD DS. Drives `var.identity_mode`, the session-host join config, and the FSLogix storage
-`directory_service_options`. (PROMPT.md §5 exposes the toggle; a baseline default is still needed.)
-**Question:** Which identity model is the baseline for dev/prod?
-**Resolution:** _pending_
-
 ---
 
 ## Resolved
+
+### OQ-006 — Identity model for session hosts → **Microsoft Entra ID join**
+**Resolution (2026-06-10):** `identity_mode = "entra-id-join"` (cloud-only). Session hosts Entra-joined via
+the `AADLoginForWindows` extension; FSLogix Azure Files uses Entra Kerberos (`AADKERB`). No DCs deployed
+here. Toggle retained for `entra-ds`/`ad-ds`. See DECISIONS.md ADR-0003.
 
 ### OQ-001 — Align this repo to the `Azure-Architecture` pattern? → **YES, re-pattern**
 **Resolution (2026-06-10):** Re-pattern to the reference layout (root governance docs + `bootstrap/
