@@ -74,7 +74,7 @@ resource "azurerm_key_vault" "tfstate" {
   tenant_id           = var.tenant_id
   sku_name            = "standard"
 
-  enable_rbac_authorization  = true
+  rbac_authorization_enabled = true
   soft_delete_retention_days = var.kv_soft_delete_retention_days
   purge_protection_enabled   = true
 
@@ -197,7 +197,7 @@ resource "azurerm_storage_container" "tfstate" {
 
 # DEVIATION: locked = false — see file header.
 resource "azurerm_storage_container_immutability_policy" "tfstate" {
-  storage_container_resource_manager_id = azurerm_storage_container.tfstate.resource_manager_id
+  storage_container_resource_manager_id = azurerm_storage_container.tfstate.id
   immutability_period_in_days           = 7
   locked                                = false
 }
