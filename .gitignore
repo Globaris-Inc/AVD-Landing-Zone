@@ -1,0 +1,47 @@
+# ---- Terraform ----
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# Keep committed example/placeholder var files (envs/*.tfvars, *.backend.hcl are templates),
+# but never commit local, auto-applied, or real-value var files:
+*.auto.tfvars
+*.auto.tfvars.json
+*.local.tfvars
+*.secret.tfvars
+# Bootstrap real values (subscription/tenant IDs) — only the .example is committed:
+bootstrap/terraform.tfvars
+# Note: .terraform.lock.hcl IS committed (pins provider hashes for reproducible builds).
+
+# ---- Azure / secrets ----
+*.azureauth
+*.publishsettings
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+*.key
+
+# ---- Claude Code (local-only) ----
+.claude/settings.local.json
+
+# ---- Editors / OS ----
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# ---- Logs ----
+*.log

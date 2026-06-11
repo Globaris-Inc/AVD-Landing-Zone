@@ -1,0 +1,31 @@
+# bootstrap/terraform.tfvars.example
+# Copy to terraform.tfvars (gitignored) and fill in real values before running.
+# NEVER commit terraform.tfvars — it contains subscription and tenant IDs.
+
+# ---------------------------------------------------------------------------
+# Required — replace ALL placeholder values before terraform apply
+# ---------------------------------------------------------------------------
+
+tenant_id       = "<TENANT_ID>"               # az account show --query tenantId -o tsv
+subscription_id = "<AVD_WORKLOAD_SUB_ID>"     # AVD workload subscription (state backend lives here)
+
+github_org  = "<GITHUB_ORG_OR_USER>"
+github_repo = "AVD-Landing-Zone"
+
+# IP allow-list — your deployer IP + GitHub Actions runner ranges (temporary, until §7 adds a PE).
+#   Deployer IP:    curl -s https://api.ipify.org
+#   Actions ranges: curl -s https://api.github.com/meta | jq '.actions[]'
+ip_allow_list = [
+  "<YOUR_PUBLIC_IP>/32",
+  # add GitHub Actions runner ranges here
+]
+
+# ---------------------------------------------------------------------------
+# Optional (defaults in variables.tf)
+# ---------------------------------------------------------------------------
+
+# shared_services_subscription_id = "<AVD_SHARED_SUB_ID>"  # set for a two-subscription model
+# primary_location                = "eastus2"
+# workload                        = "avd"
+# kv_soft_delete_retention_days   = 90
+# tags = { costCenter = "CC-1234" }
