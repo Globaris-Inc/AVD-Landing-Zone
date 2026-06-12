@@ -82,3 +82,8 @@ output "log_analytics_workspace_resource_id" {
   description = "Log Analytics workspace resource ID."
   value       = module.monitoring.log_analytics_workspace_resource_id
 }
+
+output "compute_gallery_resource_id" {
+  description = "Azure Compute Gallery resource ID."
+  value       = module.shared_services.compute_gallery_resource_id
+}

@@ -223,3 +223,15 @@ resource "azurerm_monitor_data_collection_rule_association" "session_hosts" {
   target_resource_id      = each.value
   data_collection_rule_id = module.monitoring.data_collection_rule_resource_id
 }
+
+# ---------------------------------------------------------------------------
+# Shared services (PROMPT.md §11) — Compute Gallery + Automation account, in the shared-services RG.
+# ---------------------------------------------------------------------------
+module "shared_services" {
+  source = "../../modules/shared-services"
+
+  name_prefix         = local.name_prefix
+  location            = var.location
+  resource_group_name = azurerm_resource_group.this["shared"].name
+  tags                = local.common_tags
+}
