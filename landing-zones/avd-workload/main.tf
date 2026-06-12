@@ -63,36 +63,38 @@ locals {
 # brownfield (existing subnet/zone IDs) is a later enhancement.
 # ---------------------------------------------------------------------------
 locals {
-  # Globally-unique, deterministic storage account name (<=24 lowercase alphanumerics).
-  fslogix_storage_account_name = lower("st${var.workload}${var.environment}${substr(sha1("${var.subscription_id}-${var.workload}-${var.environment}-fslogix"), 0, 8)}")
+  # The FSLogix block depends on the §4 spoke; gate it on the same toggle so plan never
+  # dereferences a null local.networking when deploy_networking = false (mirrors §7/§9).
+  deploy_fslogix = var.deploy_networking ? toset(["this"]) : toset([])
+
+  # Globally-unique, deterministic storage account name incl. region token (<=24 lowercase alnum).
+  fslogix_storage_account_name = lower("st${var.workload}${var.environment}${var.location_short}${substr(sha1("${var.subscription_id}-${var.workload}-${var.environment}-fslogix"), 0, 6)}")
 }
 
 # DEVIATION: native azurerm for the private DNS zone — a trivial resource; avoids the AVM pdns
 # module pulling extra azapi/time providers. The §7 vaultcore zone follows the same pattern.
 resource "azurerm_private_dns_zone" "file" {
+  for_each = local.deploy_fslogix
+
   name                = var.file_private_dns_zone_name
   resource_group_name = azurerm_resource_group.this["workload"].name
   tags                = local.common_tags
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "file" {
+  for_each = local.deploy_fslogix
+
   name                  = "link-${local.name_prefix}"
   resource_group_name   = azurerm_resource_group.this["workload"].name
-  private_dns_zone_name = azurerm_private_dns_zone.file.name
+  private_dns_zone_name = azurerm_private_dns_zone.file["this"].name
   virtual_network_id    = local.networking.virtual_network_resource_id
   registration_enabled  = false
   tags                  = local.common_tags
-
-  lifecycle {
-    precondition {
-      condition     = local.networking != null
-      error_message = "FSLogix storage (§6) requires deploy_networking = true — it consumes the §4 spoke VNet and private-endpoint subnet."
-    }
-  }
 }
 
 module "fslogix_storage" {
-  source = "../../modules/fslogix-storage"
+  source   = "../../modules/fslogix-storage"
+  for_each = local.deploy_fslogix
 
   storage_account_name                = local.fslogix_storage_account_name
   location                            = var.location
@@ -102,7 +104,7 @@ module "fslogix_storage" {
   account_replication_type            = var.fslogix_account_replication_type
   directory_type                      = local.identity.azure_files_directory_service_options
   private_endpoint_subnet_resource_id = local.networking.private_endpoint_subnet_resource_id
-  file_private_dns_zone_resource_id   = azurerm_private_dns_zone.file.id
+  file_private_dns_zone_resource_id   = azurerm_private_dns_zone.file["this"].id
   log_analytics_workspace_resource_id = module.monitoring.log_analytics_workspace_resource_id
 }
 
@@ -230,8 +232,9 @@ resource "azurerm_monitor_data_collection_rule_association" "session_hosts" {
 module "shared_services" {
   source = "../../modules/shared-services"
 
-  name_prefix         = local.name_prefix
-  location            = var.location
-  resource_group_name = azurerm_resource_group.this["shared"].name
-  tags                = local.common_tags
+  name_prefix                         = local.name_prefix
+  location                            = var.location
+  resource_group_name                 = azurerm_resource_group.this["shared"].name
+  tags                                = local.common_tags
+  log_analytics_workspace_resource_id = module.monitoring.log_analytics_workspace_resource_id
 }

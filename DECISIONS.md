@@ -113,3 +113,29 @@ FSLogix Azure Files authentication mode. PROMPT.md §5 exposes a `identity_mode`
 ### Alternatives considered
 - **Microsoft Entra Domain Services** — managed domain; more cost/ops, useful for legacy auth.
 - **Self-managed AD DS** — full control, most operational overhead; DCs are platform scope.
+
+---
+
+## ADR-0004 — Native `azurerm` private DNS zones (not the AVM pdns module)
+
+- **Status:** Accepted
+- **Date:** 2026-06-12
+- **Deciders:** Cloud Solutions Architect + Cloud Engineer
+
+### Context
+§6 (FSLogix storage) and §7 (Key Vault) need `privatelink.file.*` / `privatelink.vaultcore.azure.net`
+private DNS zones (+ VNet links) for their private endpoints.
+
+### Decision
+Create these with **native `azurerm_private_dns_zone` + `azurerm_private_dns_zone_virtual_network_link`**
+in the composition root, rather than `Azure/avm-res-network-privatednszone`. Documented with `# DEVIATION`.
+
+### Consequences
+- **Pro:** trivial, unambiguous resources; avoids pulling the AVM pdns module's extra `azapi`/`time`
+  providers and its less-obvious `virtual_network_links` schema. Consistent pattern for both zones.
+- **Con:** a deliberate deviation from "compose from AVM"; if the platform team later provides shared
+  `privatelink.*` zones (connectivity subscription), switch to consuming those instead of creating them.
+
+### Alternatives considered
+- **`avm-res-network-privatednszone`** — extra provider deps + schema ambiguity for a one-resource need.
+- **Consume platform-provided zones** — preferred in a mature platform LZ; not assumed available here.

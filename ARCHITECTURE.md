@@ -63,8 +63,10 @@ An **application** landing zone for AVD, on top of an existing CAF **platform** 
 ## RTO / RPO (targets, to validate per environment)
 - **Compute (session hosts):** disposable — rebuilt from a Compute Gallery image; low RTO. Pooled hosts
   carry no state.
-- **Profiles (FSLogix):** the stateful tier. Azure Files redundancy (ZRS) + backup set the RPO; FSLogix
-  Cloud Cache / cross-region replication would lower it for multi-region DR (not yet wired).
+- **Profiles (FSLogix):** the stateful tier. **Implemented:** Azure Files **ZRS** (var
+  `fslogix_account_replication_type`, default `ZRS`). **Not yet wired (future BCDR):** Azure Files
+  **backup**, and **FSLogix Cloud Cache** / cross-region replication for multi-region DR — these would
+  set/lower the RPO. `prevent_destroy` on the profile store is also a recommended follow-up.
 - **State backend:** GZRS + blob versioning (bootstrap).
 
 ## Open decisions
