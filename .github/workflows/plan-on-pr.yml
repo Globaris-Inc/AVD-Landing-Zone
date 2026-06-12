@@ -1,0 +1,102 @@
+# plan-on-pr.yml — PR gate for the AVD workload composition root.
+# Section: PROMPT.md §12 — CI/CD (GitHub Actions, OIDC)
+# Last updated: 2026-06-11
+#
+# Runs fmt-check + validate + tflint + plan against the DEV backend/tfvars on every PR to main.
+# NO apply happens here — this is a read-only gate that surfaces the plan for review.
+#
+# Auth is GitHub OIDC (azure/login + the azurerm provider's ARM_USE_OIDC), backed by the federated
+# credential whose subject is "repo:<org>/<repo>:pull_request" (created in bootstrap/identity.tf).
+# No client secrets exist anywhere — only the three repo *variables* (AZURE_CLIENT_ID / _TENANT_ID /
+# _SUBSCRIPTION_ID) written by the bootstrap.
+
+name: plan-on-pr
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "landing-zones/**"
+      - "modules/**"
+      - "envs/**"
+      - ".github/workflows/**"
+
+# Least privilege. id-token:write is required to request the OIDC token for azure/login;
+# pull-requests:write lets the job surface the plan back onto the PR; contents:read to checkout.
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+# One in-flight plan per PR; cancel superseded runs.
+concurrency:
+  group: plan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: terraform plan (dev)
+    runs-on: ubuntu-latest
+
+    # Run all terraform steps inside the only deployable root module.
+    defaults:
+      run:
+        working-directory: landing-zones/avd-workload
+
+    env:
+      # OIDC auth for the azurerm provider (no secrets). The backend also uses Entra ID
+      # (use_azuread_auth = true in envs/*.backend.hcl), so these cover state access too.
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      # Override the <PLACEHOLDER> subscription_id / tenant_id in envs/dev.tfvars with the real
+      # values from the repo variables, so no real IDs are committed to the repo.
+      TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+      TF_IN_AUTOMATION: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      # OIDC login. Pulls the federated token (subject repo:<org>/<repo>:pull_request) and
+      # exchanges it for an Azure access token — no client secret involved.
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # fmt-check runs from the repo root (-recursive) so it covers modules/ and envs/ too.
+      - name: Terraform fmt (check)
+        working-directory: .
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init (dev backend)
+        run: terraform init -backend-config=../../envs/dev.backend.hcl -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      # tflint is best-effort: install + run, but a lint finding must not block the plan gate.
+      - name: Setup tflint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: tflint (best-effort)
+        continue-on-error: true
+        run: |
+          tflint --init
+          tflint --recursive
+
+      - name: Terraform plan (dev)
+        run: terraform plan -var-file=../../envs/dev.tfvars -input=false -no-color

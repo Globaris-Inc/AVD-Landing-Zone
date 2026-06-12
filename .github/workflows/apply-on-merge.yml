@@ -1,0 +1,83 @@
+# apply-on-merge.yml — deploy the AVD workload composition root on merge to main.
+# Section: PROMPT.md §12 — CI/CD (GitHub Actions, OIDC)
+# Last updated: 2026-06-11
+#
+# Runs terraform apply against the PROD backend/tfvars when a PR merges (push) to main.
+#
+# Gate: `environment: production`. GitHub holds the run at the apply job until a required reviewer
+# approves it (Settings → Environments → production → required reviewers — configured per
+# bootstrap/README.md). The OIDC token issued for an Environment job carries the subject
+# "repo:<org>/<repo>:environment:production", which matches the federated credential created in
+# bootstrap/identity.tf — so apply can ONLY authenticate from within the protected environment.
+#
+# No client secrets anywhere — auth is OIDC; the three values come from repo *variables*.
+
+name: apply-on-merge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "landing-zones/**"
+      - "modules/**"
+      - "envs/**"
+      - ".github/workflows/**"
+
+# Least privilege: only what OIDC login + checkout need.
+permissions:
+  id-token: write
+  contents: read
+
+# Never run two applies against the same state concurrently. Do NOT cancel an in-flight
+# apply — let it finish to avoid leaving the remote state half-applied.
+concurrency:
+  group: apply-main
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: terraform apply (prod)
+    runs-on: ubuntu-latest
+
+    # The required-reviewer gate. The job pauses here until approved in the GitHub UI.
+    environment: production
+
+    defaults:
+      run:
+        working-directory: landing-zones/avd-workload
+
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      # Override the <PLACEHOLDER> subscription_id / tenant_id in envs/prod.tfvars with the real
+      # values from repo variables — keeps real IDs out of the repo.
+      TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+      TF_IN_AUTOMATION: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      # OIDC login. Federated subject for an Environment job is
+      # repo:<org>/<repo>:environment:production — matched by the bootstrap federated credential.
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform init (prod backend)
+        run: terraform init -backend-config=../../envs/prod.backend.hcl -input=false
+
+      - name: Terraform apply (prod)
+        run: terraform apply -auto-approve -var-file=../../envs/prod.tfvars -input=false -no-color

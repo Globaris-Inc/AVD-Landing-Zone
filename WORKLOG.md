@@ -22,7 +22,7 @@
 | 9 | Session hosts | ⬜ Next | — | VMs + AVD agent/DSC, domain join, autoscale |
 | 10 | Monitoring — AVD Insights | ⬜ Not started | — | |
 | 11 | Shared services | ⬜ Not started | — | |
-| 12 | CI/CD — GitHub Actions (OIDC) | ⬜ Not started | — | |
+| 12 | CI/CD — GitHub Actions (OIDC) | 🟢 Complete | 2026-06-11 | plan-on-pr (dev) + apply-on-merge (prod, env-gated); pinned actions, OIDC, no secrets. ⚠️ YAML lint pending (no actionlint here) |
 | 13 | Documentation & acceptance | ⬜ Not started | — | |
 
 **Status legend:** ⬜ Not started · 🟡 In progress · 🟢 Complete · 🔴 Blocked · 🔵 Needs review
@@ -48,6 +48,49 @@
 ---
 
 ## Sessions
+
+### Session 2026-06-11 (m) — Section 12: CI/CD — GitHub Actions (OIDC) 🟢
+
+**Files created (`.github/workflows/`):**
+- `plan-on-pr.yml` — `pull_request` → `main` (path filters `landing-zones/** modules/** envs/**
+  .github/workflows/**`). `permissions:` `id-token:write` + `contents:read` + `pull-requests:write`.
+  Steps: checkout → setup-terraform → azure/login (OIDC) → `fmt -check -recursive` (from repo root) →
+  `init -backend-config=../../envs/dev.backend.hcl` → `validate` → tflint (`continue-on-error`,
+  best-effort) → `plan -var-file=../../envs/dev.tfvars`. **No apply.** `working-directory:
+  landing-zones/avd-workload`.
+- `apply-on-merge.yml` — `push` → `main` (same path filters). `environment: production` (required-reviewer
+  gate). `permissions:` `id-token:write` + `contents:read`. Steps: checkout → setup-terraform →
+  azure/login (OIDC) → `init -backend-config=../../envs/prod.backend.hcl` → `apply -auto-approve
+  -var-file=../../envs/prod.tfvars`.
+
+**Removed:** `.github/workflows/.gitkeep`.
+
+**Auth pattern (both):** OIDC only, no secrets. `ARM_USE_OIDC=true` + `ARM_CLIENT_ID/_TENANT_ID/
+_SUBSCRIPTION_ID` from repo **variables** `AZURE_CLIENT_ID/_TENANT_ID/_SUBSCRIPTION_ID`. `TF_VAR_
+subscription_id`/`TF_VAR_tenant_id` override the `<PLACEHOLDER>`s in the tfvars (keeps real IDs out of
+the repo). Backend uses `use_azuread_auth=true` so the same OIDC token reads/writes state. Federated-
+credential subjects already exist in bootstrap: `pull_request` (PR plan), `ref:refs/heads/main` (push),
+`environment:production` (apply gate).
+
+**Pinned actions:** `actions/checkout@v4`, `hashicorp/setup-terraform@v3` (terraform_version 1.9.8,
+wrapper off), `azure/login@v2`, `terraform-linters/setup-tflint@v4`. No floating refs.
+
+**Assumptions:** PR plans target **dev** backend+tfvars; apply targets **prod** backend+tfvars (mirrors
+the two federated credentials + the bootstrap README's `production` environment). Concurrency: PR plans
+cancel-in-progress; apply does NOT cancel-in-progress (don't interrupt an in-flight state mutation).
+
+**Validation:** ⚠️ No YAML linter available here (no `actionlint`, no Python `yaml`, no
+`powershell-yaml`) — **CI-side YAML lint is pending**. Files written by hand against the documented
+action interfaces. No `terraform` re-run this session (no `.tf` changed).
+
+**Operator must set in GitHub before these run:** (1) repo Variables `AZURE_CLIENT_ID`,
+`AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` (from bootstrap outputs); (2) Environment `production` with a
+required reviewer (per bootstrap/README.md); (3) populate `envs/{dev,prod}.backend.hcl` placeholders with
+bootstrap outputs. Note: prod apply currently composes only Sections 3–8 (9–11 not built yet) — expected.
+
+**Next:** Section 9 — Session hosts (or Section 13 docs).
+
+---
 
 ### Session 2026-06-11 (l) — Section 8: Management plane 🟢
 
