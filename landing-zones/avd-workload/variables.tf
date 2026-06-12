@@ -261,3 +261,13 @@ variable "session_host_admin_username" {
   type        = string
   default     = "avdadmin"
 }
+
+# ---------------------------------------------------------------------------
+# Monitoring (Section 10)
+# ---------------------------------------------------------------------------
+
+variable "log_retention_in_days" {
+  description = "Log Analytics workspace data retention in days (30-730)."
+  type        = number
+  default     = 30
+}
