@@ -205,3 +205,37 @@ variable "vault_private_dns_zone_name" {
   type        = string
   default     = "privatelink.vaultcore.azure.net"
 }
+
+# ---------------------------------------------------------------------------
+# Management plane (Section 8)
+# ---------------------------------------------------------------------------
+
+variable "host_pool_type" {
+  description = "AVD host pool type: Pooled or Personal."
+  type        = string
+  default     = "Pooled"
+}
+
+variable "max_sessions_allowed" {
+  description = "Maximum sessions per host (Pooled host pools)."
+  type        = number
+  default     = 8
+}
+
+variable "app_group_type" {
+  description = "Application group type: Desktop or RemoteApp."
+  type        = string
+  default     = "Desktop"
+}
+
+variable "deploy_scaling_plan" {
+  description = "Deploy an autoscale scaling plan (Pooled host pools only)."
+  type        = bool
+  default     = true
+}
+
+variable "scaling_plan_time_zone" {
+  description = "Time zone for the scaling plan schedule."
+  type        = string
+  default     = "UTC"
+}

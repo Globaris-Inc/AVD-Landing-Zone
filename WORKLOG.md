@@ -18,8 +18,8 @@
 | 5 | Identity & domain join | 🟢 Complete | 2026-06-10 | entra-id-join (ADR-0003); modules/identity-join + wired. ✅ `terraform validate` clean |
 | 6 | FSLogix profile storage | 🟢 Complete | 2026-06-10 | Premium FileStorage (AADKERB) + file private endpoint + privatelink.file zone. ✅ validate clean; reviewer-gated |
 | 7 | Security — Key Vault, private endpoints, DNS | 🟢 Complete | 2026-06-11 | Key Vault (RBAC, private, purge-protected) + PE + vaultcore zone, gated. ✅ validate; reviewer-approved |
-| 8 | Management plane | ⬜ Next | — | workspace, host pool, app groups, scaling plan |
-| 9 | Session hosts | ⬜ Not started | — | |
+| 8 | Management plane | 🟢 Complete | 2026-06-11 | workspace/host pool/app group/scaling plan (AVM) + native ws↔ag assoc. ✅ validate; reviewer-gated |
+| 9 | Session hosts | ⬜ Next | — | VMs + AVD agent/DSC, domain join, autoscale |
 | 10 | Monitoring — AVD Insights | ⬜ Not started | — | |
 | 11 | Shared services | ⬜ Not started | — | |
 | 12 | CI/CD — GitHub Actions (OIDC) | ⬜ Not started | — | |
@@ -48,6 +48,30 @@
 ---
 
 ## Sessions
+
+### Session 2026-06-11 (l) — Section 8: Management plane 🟢
+
+**modules/management-plane/** — AVM `desktopvirtualization-{hostpool 0.4.0, applicationgroup 0.2.1,
+workspace 0.2.2, scalingplan 0.2.1}` + native `azurerm_virtual_desktop_workspace_application_group_association`
+(workspace module has no association input — DEVIATION). Pooled autoscale schedule, gated to Pooled via
+`for_each`. Root `module "management_plane"` (not networking-gated). `host_pool_type`/`max_sessions_allowed`
+surfaced to envs.
+
+**Pinned-interface gotchas (the 0.2.x/0.4.0 interfaces differ from the main-branch READMEs):**
+host_pool needs a plain `resource_group_name` **and** `virtual_desktop_host_pool_resource_group_name`;
+tags go via the **prefixed** inputs (`virtual_desktop_host_pool_tags`, `..._application_group_tags`,
+`..._workspace_tags`, `..._scaling_plan_tags`) — plain `tags` is silently dropped (reviewer blocker, fixed).
+Verified input/output names against the module caches under `.terraform/modules/management_plane.*`.
+
+**Diagnostic settings DEFERRED to §10** (no Log Analytics workspace exists yet) — noted in the module
+header and here; §10 wires diag for the management-plane resources.
+
+**Reviewer:** 1 blocker (host_pool untagged) fixed; should-fixes (diag deferral recorded; redundant
+modtm/random in versions.tf) + nits noted. `terraform validate` ✅ clean.
+
+**Next:** Section 9 — Session hosts (VMs + AVD agent/DSC, domain join, register to host pool).
+
+---
 
 ### Session 2026-06-11 (k) — Section 7: Security (Key Vault) 🟢
 
