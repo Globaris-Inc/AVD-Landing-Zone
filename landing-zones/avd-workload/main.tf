@@ -213,3 +213,13 @@ module "monitoring" {
   tags                       = local.common_tags
   retention_in_days          = var.log_retention_in_days
 }
+
+# Associate the AVD data collection rule with each session host (the AMA extension on the VMs
+# collects the configured perf counters + events into the workspace for AVD Insights).
+resource "azurerm_monitor_data_collection_rule_association" "session_hosts" {
+  for_each = try(module.session_hosts["this"].session_host_resource_ids, {})
+
+  name                    = "dcra-${each.key}"
+  target_resource_id      = each.value
+  data_collection_rule_id = module.monitoring.data_collection_rule_resource_id
+}

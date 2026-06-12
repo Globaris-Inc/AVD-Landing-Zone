@@ -20,8 +20,8 @@
 | 7 | Security — Key Vault, private endpoints, DNS | 🟢 Complete | 2026-06-11 | Key Vault (RBAC, private, purge-protected) + PE + vaultcore zone, gated. ✅ validate; reviewer-approved |
 | 8 | Management plane | 🟢 Complete | 2026-06-11 | workspace/host pool/app group/scaling plan (AVM) + native ws↔ag assoc. ✅ validate; reviewer-gated |
 | 9 | Session hosts | 🟢 Complete | 2026-06-11 | AVM VMs (for_each) + Entra join + AVD agent DSC, registered to host pool. ✅ validate; reviewer-gated |
-| 10 | Monitoring — AVD Insights | ⬜ Next | — | Log Analytics + DCR + diag settings |
-| 11 | Shared services | ⬜ Not started | — | |
+| 10 | Monitoring — AVD Insights | 🟢 Complete | 2026-06-12 | LAW + DCR + diag (host pool/workspace/KV/storage) + session-host AMA & DCR association. ✅ validate; self-reviewed (gate hit limit) |
+| 11 | Shared services | ⬜ Next | — | Compute Gallery + Automation account |
 | 12 | CI/CD — GitHub Actions (OIDC) | 🟢 Complete | 2026-06-11 | plan-on-pr (dev) + apply-on-merge (prod, env-gated); pinned actions, OIDC, no secrets. ⚠️ YAML lint pending (no actionlint here) |
 | 13 | Documentation & acceptance | ⬜ Not started | — | |
 
@@ -48,6 +48,29 @@
 ---
 
 ## Sessions
+
+### Session 2026-06-12 (o) — Section 10: Monitoring (AVD Insights) 🟢
+
+**modules/monitoring/** — AVM `operationalinsights-workspace` 0.5.1 (LAW, PerGB2018, 30-day) +
+`insights-datacollectionrule` 0.1.0 (Windows perf counters + event logs → LAW), in the **shared** RG.
+**Diagnostics → LAW** via the AVM modules' own inputs: host pool + workspace (`diagnostic_settings`),
+Key Vault (`diagnostic_settings`), storage account + file service (`diagnostic_settings_storage_account`
++ `diagnostic_settings_file` — storage uses per-service inputs, not a single one). Each resource module
+gained a `log_analytics_workspace_resource_id` input (empty disables). Session hosts: added the
+`AzureMonitorWindowsAgent` extension (`deploy_sequence = 3`) + native `azurerm_monitor_data_collection_
+rule_association` per host (root, `for_each` over session-host IDs).
+
+**Committed in two parts:** partial `b51e349` (LAW + DCR + host pool/workspace/KV diag), then completed
+here (storage diag + AMA + DCR association).
+
+**Reviewer gate:** the `code-reviewer` subagent **could not complete (session limit)** — self-reviewed
+instead: `terraform validate` ✅ clean (lone warning is inside the pinned LAW module), DCR data_flows →
+`laDestination` destination name matches, diag/association/AMA shapes verified against the cached module
+interfaces. **Recommend running `/code-review` on §10 when convenient.**
+
+**Next:** Section 11 — Shared services (Compute Gallery + Automation account).
+
+---
 
 ### Session 2026-06-11 (n) — Section 9: Session hosts 🟢
 

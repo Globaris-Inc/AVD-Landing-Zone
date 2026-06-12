@@ -57,6 +57,18 @@ locals {
           }
         })
       }
+    },
+    {
+      # Azure Monitor Agent — collects the DCR perf counters + events for AVD Insights (§10).
+      azure_monitor_agent = {
+        name                 = "AzureMonitorWindowsAgent"
+        publisher            = "Microsoft.Azure.Monitor"
+        type                 = "AzureMonitorWindowsAgent"
+        type_handler_version = "1.0"
+        deploy_sequence      = 3
+        settings             = null
+        protected_settings   = null
+      }
     }
   )
 }
