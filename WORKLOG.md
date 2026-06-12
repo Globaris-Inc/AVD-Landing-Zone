@@ -19,8 +19,8 @@
 | 6 | FSLogix profile storage | 🟢 Complete | 2026-06-10 | Premium FileStorage (AADKERB) + file private endpoint + privatelink.file zone. ✅ validate clean; reviewer-gated |
 | 7 | Security — Key Vault, private endpoints, DNS | 🟢 Complete | 2026-06-11 | Key Vault (RBAC, private, purge-protected) + PE + vaultcore zone, gated. ✅ validate; reviewer-approved |
 | 8 | Management plane | 🟢 Complete | 2026-06-11 | workspace/host pool/app group/scaling plan (AVM) + native ws↔ag assoc. ✅ validate; reviewer-gated |
-| 9 | Session hosts | ⬜ Next | — | VMs + AVD agent/DSC, domain join, autoscale |
-| 10 | Monitoring — AVD Insights | ⬜ Not started | — | |
+| 9 | Session hosts | 🟢 Complete | 2026-06-11 | AVM VMs (for_each) + Entra join + AVD agent DSC, registered to host pool. ✅ validate; reviewer-gated |
+| 10 | Monitoring — AVD Insights | ⬜ Next | — | Log Analytics + DCR + diag settings |
 | 11 | Shared services | ⬜ Not started | — | |
 | 12 | CI/CD — GitHub Actions (OIDC) | 🟢 Complete | 2026-06-11 | plan-on-pr (dev) + apply-on-merge (prod, env-gated); pinned actions, OIDC, no secrets. ⚠️ YAML lint pending (no actionlint here) |
 | 13 | Documentation & acceptance | ⬜ Not started | — | |
@@ -48,6 +48,26 @@
 ---
 
 ## Sessions
+
+### Session 2026-06-11 (n) — Section 9: Session hosts 🟢
+
+**modules/session-hosts/** — AVM `compute-virtualmachine` 0.21.0, `for_each` per host (zone-spread), NIC
+into the §4 session-host subnet + ASG association, system-assigned identity, **module-generated** local
+admin password (no secret in repo). Extensions: `AADLoginForWindows` (Entra join) then AVD-agent
+`Microsoft.PowerShell.DSC` (registration), ordered via `deploy_sequence` 1→2. The §8 host_pool now
+exposes `registrationinfo_token` (sensitive); the root passes it to the agent's `protected_settings`.
+Root `module "session_hosts"` gated on `deploy_networking && session_host_count > 0`.
+
+**Reviewer:** 2 blockers fixed — `password_authentication_disabled = true` (required for Windows; was
+`false`), and extension ordering enforced via `deploy_sequence` (was parallel). Should-fixes: `fmt`,
+`encryption_at_host` note, ASG wired at NIC level (`application_security_groups`). `terraform validate` ✅.
+
+**UNVERIFIED / pre-apply (OQ-008):** AVD-agent DSC `modulesUrl`/version/`Configuration_*.zip`;
+`Microsoft.Compute/EncryptionAtHost` subscription feature (AVM VM default `encryption_at_host_enabled=true`).
+
+**Next:** Section 10 — Monitoring (Log Analytics + DCR; wire diag settings for §8/§9 resources).
+
+---
 
 ### Session 2026-06-11 (m) — Section 12: CI/CD — GitHub Actions (OIDC) 🟢
 
