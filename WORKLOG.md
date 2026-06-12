@@ -23,7 +23,7 @@
 | 10 | Monitoring — AVD Insights | 🟢 Complete | 2026-06-12 | LAW + DCR + diag (host pool/workspace/KV/storage) + session-host AMA & DCR association. ✅ validate; self-reviewed (gate hit limit) |
 | 11 | Shared services | 🟢 Complete | 2026-06-12 | Compute Gallery + Automation account (AVM) in shared RG. ✅ validate; self-reviewed |
 | 12 | CI/CD — GitHub Actions (OIDC) | 🟢 Complete | 2026-06-11 | plan-on-pr (dev) + apply-on-merge (prod, env-gated); pinned actions, OIDC, no secrets. ⚠️ YAML lint pending (no actionlint here) |
-| 13 | Documentation & acceptance | ⬜ Next | — | README quickstart, ARCHITECTURE refresh, acceptance |
+| 13 | Documentation & acceptance | 🟢 Complete | 2026-06-12 | README + ARCHITECTURE refreshed; docs/acceptance.md added. **All sections complete.** |
 
 **Status legend:** ⬜ Not started · 🟡 In progress · 🟢 Complete · 🔴 Blocked · 🔵 Needs review
 
@@ -48,6 +48,21 @@
 ---
 
 ## Sessions
+
+### Session 2026-06-12 (q) — Section 13: Documentation & acceptance 🟢 — BUILD COMPLETE
+
+Refreshed `README.md` (components table, deploy flow, pre-apply checklist) and `ARCHITECTURE.md` (final
+module/version map, design-area A–I, key decisions, RTO/RPO). Added `docs/acceptance.md` (validation
+status + pre-apply checklist + acceptance criteria). Docs only — no Terraform change.
+
+**🎉 All 13 PROMPT.md sections complete.** The composition root + bootstrap `terraform validate` clean.
+Remaining real-world steps are operational: run `bootstrap/`, fill placeholders, resolve OQ-007/008,
+register EncryptionAtHost, confirm the AVD-agent DSC artifact, then apply via CI. The four audit fix
+branches (`fix/*`) remain unmerged for the user to review/merge.
+
+**Next:** operationalize (bootstrap + first apply), and run `/code-review` on §10/§11 (self-reviewed only).
+
+---
 
 ### Session 2026-06-12 (p) — Section 11: Shared services 🟢
 

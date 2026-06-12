@@ -1,76 +1,80 @@
 # Azure Virtual Desktop — Landing Zone (IaC)
 
 Terraform Infrastructure-as-Code for an **Azure Virtual Desktop (AVD) application landing zone**,
-following the Microsoft reference architecture:
-[AVD Landing Zone Design Guide](https://learn.microsoft.com/en-us/azure/architecture/landing-zones/azure-virtual-desktop/design-guide)
-and the [`Azure/avdaccelerator`](https://github.com/Azure/avdaccelerator) baseline.
+following the Microsoft [AVD Landing Zone design guide](https://learn.microsoft.com/en-us/azure/architecture/landing-zones/azure-virtual-desktop/design-guide)
+and the [`Azure/avdaccelerator`](https://github.com/Azure/avdaccelerator) baseline. Composed from
+**[Azure Verified Modules (AVM)](https://azure.github.io/Azure-Verified-Modules/)** for `azurerm`,
+delivered through **GitHub Actions** with **OIDC** (no stored cloud secrets).
 
-The landing zone is composed from **[Azure Verified Modules (AVM)](https://azure.github.io/Azure-Verified-Modules/)**
-for `azurerm`. CI/CD runs on **GitHub Actions** using **OIDC** federated auth (no stored cloud secrets).
-
-> This is an **application** landing zone. It assumes a CAF **platform** landing zone (connectivity,
-> identity, management) already exists — see [Prerequisites](#prerequisites). Stack: **Terraform + AVM only.**
+> An **application** landing zone — it assumes a CAF **platform** landing zone (connectivity, identity,
+> management) already exists. See [Prerequisites](#prerequisites). Stack: **Terraform + AVM only.**
 
 ---
 
-## How this project is run
+## What gets deployed
 
-Work follows a strict, section-based contract — read these in order before contributing:
+| Module | Resources | AVM |
+|--------|-----------|-----|
+| `networking` | Spoke VNet, NSG (reverse-connect), ASG, route table, optional hub peering | network/* |
+| `identity-join` | Identity-mode config (Entra ID join baseline) — no DCs deployed | (config) |
+| `fslogix-storage` | Premium Azure Files (Entra Kerberos) + file private endpoint | storage-storageaccount |
+| `security` | Key Vault (RBAC, private endpoint) + private DNS | keyvault-vault |
+| `management-plane` | Host pool, application group, workspace, scaling plan | desktopvirtualization/* |
+| `session-hosts` | Session-host VMs + Entra join + AVD agent registration | compute-virtualmachine |
+| `monitoring` | Log Analytics + AVD data collection rule + diagnostics | operationalinsights, insights/dcr |
+| `shared-services` | Compute Gallery + Automation account | compute-gallery, automation |
 
-1. **[CLAUDE.md](CLAUDE.md)** — operating rules (one section per session, verify-before-write, pin versions).
-2. **[PROMPT.md](PROMPT.md)** — the requirements as 13 numbered sections.
-3. **[WORKLOG.md](WORKLOG.md)** — source of truth for what's been done (newest first).
-4. **[DECISIONS.md](DECISIONS.md)** / **[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)** — ADRs and unresolved items.
-
-Four role subagents in `.claude/agents/` (Architect → Cloud Engineer → DevSecOps → Code Reviewer)
-operate within that model — see [docs/workflow.md](docs/workflow.md).
+Composition root: [`landing-zones/avd-workload/`](landing-zones/avd-workload). Full design-area (A–I)
+mapping: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Repository layout
 
 ```
-ARCHITECTURE.md          Design-area A–I mapping + diagrams
-CLAUDE.md PROMPT.md WORKLOG.md DECISIONS.md OPEN-QUESTIONS.md   Governance
-.github/workflows/       CI/CD — plan-on-pr, apply-on-merge (OIDC)   [Section 12]
-.claude/agents/          The four role subagents
-bootstrap/               OIDC federation + Terraform state backend    [Section 2]
-modules/                 Reusable AVD modules (one concern each)      [Sections 4–11]
-  networking/ identity-join/ fslogix-storage/ security/
-  management-plane/ session-hosts/ monitoring/ shared-services/
-landing-zones/avd-workload/   Composition root that calls the modules
-envs/                    Per-env tfvars + backend config (placeholders)
-policies/                Optional guardrails (deny public PaaS, required tags)
-docs/                    Naming/tagging + role workflow
+ARCHITECTURE.md  CLAUDE.md  PROMPT.md  WORKLOG.md  DECISIONS.md  OPEN-QUESTIONS.md   Governance
+.github/workflows/    plan-on-pr.yml, apply-on-merge.yml (OIDC, env-gated)
+bootstrap/            one-time: OIDC federation + Terraform state backend (CMK)
+modules/              the eight AVD modules above
+landing-zones/avd-workload/   composition root (calls the modules)
+envs/                 dev/prod tfvars + backend.hcl (placeholders)
+policies/             optional guardrails
+docs/                 naming/tagging, role workflow, acceptance
 ```
 
 ## Prerequisites
 
 1. A deployed **CAF platform landing zone** (connectivity / identity / management). Not created here.
-2. An identity service for session-host domain join (Entra ID join, Entra DS, or AD DS) — see OQ-006.
-3. Tooling: **Terraform ≥ 1.9**, `azurerm` ≥ 4.0, `azuread` ≥ 3.0, Azure CLI.
-4. Subscriptions for the AVD **workload** and **shared services** application landing zones.
+2. **Microsoft Entra ID join** for session hosts is the baseline (ADR-0003). Entra Kerberos enables
+   FSLogix on Azure Files. (`entra-ds` / `ad-ds` are toggle options.)
+3. Tooling: **Terraform ≥ 1.9**, `azurerm` ≥ 4, `azuread` ≥ 3, Azure CLI. On Windows, set
+   `git config --global core.longpaths true` (AVM modules nest deeply).
+4. Subscription(s) for the AVD **workload** (+ optional shared-services).
 
-## Quick start
-
-> Replace every `<PLACEHOLDER>` in `envs/*.tfvars` before deploying. Run the one-time `bootstrap/`
-> first (creates OIDC federation + the Terraform state backend).
+## Deploy
 
 ```bash
+# 1) One-time bootstrap (OIDC federation + state backend) — see bootstrap/README.md
+cd bootstrap && terraform init && terraform apply -var-file=terraform.tfvars
+
+# 2) Fill the <PLACEHOLDER>s in envs/<env>.backend.hcl and envs/<env>.tfvars from the outputs,
+#    and set the GitHub repo variables AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID.
+
+# 3) Let CI drive it: PRs run plan (dev); merge to main runs apply (prod, behind the
+#    'production' GitHub Environment). Or locally:
 cd landing-zones/avd-workload
 terraform init -backend-config=../../envs/dev.backend.hcl
-terraform plan  -var-file=../../envs/dev.tfvars
-terraform apply -var-file=../../envs/dev.tfvars
+terraform plan -var-file=../../envs/dev.tfvars
 ```
 
-In practice, **let CI/CD drive deployments** — PRs run `plan`, merges to `main` run an
-environment-gated `apply`. See [.github/workflows](.github/workflows).
+## Before the first apply
 
-## Conventions
-
-- **Naming & tags:** [docs/naming-and-tagging.md](docs/naming-and-tagging.md) (CAF naming + minimum tags).
-- **Module versions:** every AVM module is **version-pinned**; bumps go through a PR.
-- **Secrets:** none in the repo. CI uses OIDC; runtime secrets live in Key Vault.
+- **OQ-006/007/008** in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md): confirm the identity model; consider
+  scoping the CI principal down from Owner; register `Microsoft.Compute/EncryptionAtHost`; confirm the
+  AVD-agent DSC artifact URL/version (marked `# UNVERIFIED`).
+- Replace every `<PLACEHOLDER>` in `envs/*` and `bootstrap/terraform.tfvars` (never committed).
 
 ## Status
 
-Governance is established; building proceeds section-by-section per `PROMPT.md`. Current progress is in
-[WORKLOG.md](WORKLOG.md).
+Sections **1–12 complete** and **locally `terraform validate`-clean**; §13 (docs) in progress. Progress
+and decisions: [WORKLOG.md](WORKLOG.md) · [DECISIONS.md](DECISIONS.md). Built section-by-section with a
+four-role subagent workflow ([docs/workflow.md](docs/workflow.md)): Architect → Cloud Engineer →
+DevSecOps → Code Reviewer.

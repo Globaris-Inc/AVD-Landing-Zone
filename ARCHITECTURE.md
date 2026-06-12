@@ -1,73 +1,72 @@
 # AVD Landing Zone — Architecture
 
 Maps the [Microsoft AVD Landing Zone design areas](https://learn.microsoft.com/en-us/azure/architecture/landing-zones/azure-virtual-desktop/design-guide)
-to the Terraform modules this repository deploys. Owned by the `cloud-solutions-architect` role; kept
-current as decisions are made (see [DECISIONS.md](DECISIONS.md)). Stack: **Terraform + AVM only**.
+to the Terraform modules this repo deploys. Owned by the `cloud-solutions-architect` role; decisions in
+[DECISIONS.md](DECISIONS.md). Stack: **Terraform + AVM only**.
 
 ## Scope
 
-An **application** landing zone for AVD, assuming an existing CAF **platform** landing zone providing:
-
-- **Connectivity** — hub VNet, Azure Firewall, ExpressRoute/VPN, shared private DNS zones.
-- **Identity** — domain services for session-host join (Entra ID join / Entra DS / AD DS).
-- **Management** — central monitoring/governance (the AVD workload also runs its own monitoring).
+An **application** landing zone for AVD, on top of an existing CAF **platform** landing zone
+(connectivity / identity / management). The composition root `landing-zones/avd-workload/` creates a
+**workload** RG and a **shared-services** RG (single-subscription model) and calls the `modules/*`.
 
 ```
-                       Platform landing zone (PREREQUISITE — not built here)
-   ┌────────────────┐   ┌────────────────┐   ┌────────────────┐
-   │  Connectivity  │   │    Identity    │   │   Management   │
-   │ hub vnet / fw  │   │  Entra DS/ADDS │   │  central LA/gov│
-   └───────┬────────┘   └───────┬────────┘   └────────────────┘
-           │ peering            │ domain join
-   ════════╪════════════════════╪══════════════════════════════  this repo ↓
-   ┌───────┴────────────────────┴───────────────┐   ┌─────────────────────────┐
-   │     AVD workload subscription / RG          │   │  AVD shared services    │
-   │  • spoke VNet, NSG, ASG, route table        │   │  • Compute Gallery      │
-   │  • host pool, app groups, workspace, scaling│   │  • Automation account    │
-   │  • session-host VMs (+ AVD extensions)      │   │  • Log Analytics + DCR  │
-   │  • FSLogix storage (Azure Files)            │   │    (shared monitoring)  │
-   │  • Key Vault + private endpoints + priv DNS │   │                         │
-   └─────────────────────────────────────────────┘   └─────────────────────────┘
+            Platform landing zone (PREREQUISITE — not built here)
+   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+   │ Connectivity │  │   Identity   │  │  Management  │
+   │ hub / firewall│  │  Entra ID    │  │  central gov │
+   └──────┬───────┘  └──────┬───────┘  └──────────────┘
+   peering│           join  │
+   ═══════╪═════════════════╪══════════════════════════  this repo ↓
+   ┌──────┴───────────────────────────────┐  ┌───────────────────────┐
+   │  AVD workload RG                      │  │  AVD shared-services RG│
+   │  networking · fslogix-storage ·       │  │  monitoring (LAW+DCR) ·│
+   │  security(KV) · management-plane ·     │  │  shared-services       │
+   │  session-hosts · private DNS zones     │  │  (gallery + automation)│
+   └───────────────────────────────────────┘  └───────────────────────┘
 ```
-
-The Terraform composition root is `landing-zones/avd-workload/`, which calls the reusable `modules/*`.
 
 ## Design-area mapping (A–I)
 
-| # | Design area | How this repo addresses it | Module |
-|---|-------------|----------------------------|--------|
-| A | Billing & tenant | Out of scope (platform). | — |
-| B | Identity & access | Session-host domain join + RBAC; managed identities; OIDC for CI. | `identity-join`, `session-hosts` |
-| C | Resource organization | Workload + shared-services RGs; CAF naming/tags via `locals`. | `landing-zones/avd-workload`, [naming-and-tagging](docs/naming-and-tagging.md) |
-| D | Management & monitoring | Log Analytics + data collection rule; diagnostic settings. | `monitoring` |
-| E | Network topology & connectivity | Optional spoke VNet (NSG/ASG/route table), peered to platform hub; private DNS. | `networking` |
-| F | Security | Key Vault, private endpoints, deny-public storage, NSG/ASG, least-privilege RBAC. | `security`, `fslogix-storage` |
-| G | BCDR | Host-pool/VM resilience, Azure Files redundancy, recovery posture. | `session-hosts`, `fslogix-storage` (ADR planned) |
-| H | Management baseline | Automation account; scaling plan for cost/perf. | `shared-services`, `management-plane` |
-| I | Platform automation & DevOps | Terraform + AVM; GitHub Actions CI/CD (OIDC). | repo-wide, `.github/workflows/` |
+| # | Design area | Addressed by |
+|---|-------------|--------------|
+| A | Billing & tenant | Out of scope (platform) |
+| B | Identity & access | Entra ID join (ADR-0003), `identity-join`, `session-hosts`; managed identities; OIDC CI |
+| C | Resource organization | Workload + shared RGs; CAF naming/tags (`docs/naming-and-tagging.md`) |
+| D | Management & monitoring | `monitoring` (LAW + DCR + diagnostics on host pool/workspace/KV/storage/session hosts) |
+| E | Network topology | `networking` (spoke VNet, NSG/ASG/route table, hub peering) |
+| F | Security | `security` (Key Vault), private endpoints + private DNS, RBAC, FSLogix hardening |
+| G | BCDR | host-pool/VM resilience, Azure Files redundancy (see RTO/RPO below) |
+| H | Management baseline | `shared-services` (Automation), `management-plane` (scaling plan) |
+| I | Platform automation & DevOps | Terraform + AVM; GitHub Actions CI/CD (OIDC) |
 
-## Components → AVM Terraform modules
+## Components → AVM modules (pinned)
 
-> Module registry names below; **versions are pinned when each module is built** (per CLAUDE.md
-> verify-before-write), confirmed against `registry.terraform.io/modules/Azure/`.
+| Module | AVM (version) |
+|--------|---------------|
+| networking | network-{virtualnetwork 0.17.1, networksecuritygroup 0.5.1, applicationsecuritygroup 0.1.1, routetable 0.5.0} + native private DNS zones |
+| fslogix-storage | storage-storageaccount 0.7.2 |
+| security | keyvault-vault 0.10.2 |
+| management-plane | desktopvirtualization-{hostpool 0.4.0, applicationgroup 0.2.1, workspace 0.2.2, scalingplan 0.2.1} + native ws↔ag association |
+| session-hosts | compute-virtualmachine 0.21.0 (+ AADLoginForWindows, AVD-agent DSC, AzureMonitorAgent extensions) |
+| monitoring | operationalinsights-workspace 0.5.1, insights-datacollectionrule 0.1.0 |
+| shared-services | compute-gallery 0.2.0, automation-automationaccount 0.2.0 |
 
-| Module (`modules/…`) | AVM Terraform module(s) (`Azure/…/azurerm`) |
-|----------------------|---------------------------------------------|
-| `management-plane` | `avm-res-desktopvirtualization-{workspace,hostpool,applicationgroup,scalingplan}` |
-| `session-hosts` | `avm-res-compute-virtualmachine` (+ AVD agent/DSC extensions) |
-| `fslogix-storage` | `avm-res-storage-storageaccount` (Azure Files, identity-based auth) |
-| `security` | `avm-res-keyvault-vault`, `avm-res-network-privateendpoint`, `avm-res-network-privatednszone` |
-| `networking` | `avm-res-network-{virtualnetwork,networksecuritygroup,applicationsecuritygroup,routetable}` |
-| `monitoring` | `avm-res-operationalinsights-workspace`, `avm-res-insights-datacollectionrule` |
-| `shared-services` | `avm-res-compute-gallery`, `avm-res-automation-automationaccount` |
-| `identity-join` | native `azurerm` join config (no single AVM module) — `# DEVIATION` documented at build |
+## Key design decisions
+- **Entra ID join** baseline (ADR-0003) → FSLogix Azure Files uses Entra Kerberos (`AADKERB`).
+- **Private-only PaaS** — storage + Key Vault public access disabled, reached via private endpoints; the
+  `privatelink.file` / `privatelink.vaultcore` zones are native `azurerm` (DEVIATION: avoids extra deps).
+- **`deploy_networking` gating** — the spoke and everything depending on it (FSLogix, KV PE, session
+  hosts) are gated via `for_each` so the plan never null-dereferences when networking is off.
+- **OIDC CI** (ADR-0002) — no stored secrets; CMK-encrypted remote state.
 
-## Open decisions (to be recorded as ADRs)
-- **Identity model** for session hosts (OQ-006): Entra ID join vs Entra DS vs AD DS.
-- **Networking:** new spoke here vs consume an existing spoke from the platform team.
-- **BCDR targets:** host-pool region strategy, Azure Files redundancy/backup, RPO/RTO.
-- **Host pool type:** pooled vs personal; load-balancing; max session limit.
+## RTO / RPO (targets, to validate per environment)
+- **Compute (session hosts):** disposable — rebuilt from a Compute Gallery image; low RTO. Pooled hosts
+  carry no state.
+- **Profiles (FSLogix):** the stateful tier. Azure Files redundancy (ZRS) + backup set the RPO; FSLogix
+  Cloud Cache / cross-region replication would lower it for multi-region DR (not yet wired).
+- **State backend:** GZRS + blob versioning (bootstrap).
 
-## Design principles (from the reference)
-Subscription democratization · policy-driven governance · application-focused service model ·
-single control & management plane.
+## Open decisions
+OQ-006 (identity model — resolved: Entra ID join), OQ-007 (CI principal Owner → Contributor + UAA),
+OQ-008 (EncryptionAtHost feature + AVD-agent DSC artifact). See [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
