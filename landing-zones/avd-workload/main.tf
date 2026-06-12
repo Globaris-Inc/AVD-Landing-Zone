@@ -169,3 +169,29 @@ module "management_plane" {
   deploy_scaling_plan  = var.deploy_scaling_plan
   time_zone            = var.scaling_plan_time_zone
 }
+
+# ---------------------------------------------------------------------------
+# Session hosts (PROMPT.md §9) — VMs into the §4 session-host subnet, registered to the host pool.
+# Gated on deploy_networking (needs the subnet) and session_host_count > 0.
+# ---------------------------------------------------------------------------
+locals {
+  deploy_session_hosts = var.deploy_networking && var.session_host_count > 0 ? toset(["this"]) : toset([])
+}
+
+module "session_hosts" {
+  source   = "../../modules/session-hosts"
+  for_each = local.deploy_session_hosts
+
+  name_prefix                  = local.name_prefix
+  location                     = var.location
+  resource_group_name          = azurerm_resource_group.this["workload"].name
+  tags                         = local.common_tags
+  session_host_count           = var.session_host_count
+  vm_size                      = var.session_host_vm_size
+  admin_username               = var.session_host_admin_username
+  subnet_resource_id           = local.networking.session_host_subnet_resource_id
+  asg_resource_id              = local.networking.session_host_asg_resource_id
+  host_pool_name               = module.management_plane.host_pool_name
+  host_pool_registration_token = module.management_plane.host_pool_registration_token
+  entra_id_join                = local.identity.entra_id_join
+}

@@ -40,3 +40,7 @@ key_vault_sku = "standard"
 # --- Management plane (Section 8) ---
 host_pool_type       = "Pooled"
 max_sessions_allowed = 8
+
+# --- Session hosts (Section 9) ---
+session_host_count   = 2
+session_host_vm_size = "Standard_D4as_v5"

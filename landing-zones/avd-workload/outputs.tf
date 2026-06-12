@@ -72,3 +72,8 @@ output "workspace_resource_id" {
   description = "AVD workspace resource ID."
   value       = module.management_plane.workspace_resource_id
 }
+
+output "session_host_count" {
+  description = "Number of session hosts deployed (0 when none)."
+  value       = try(module.session_hosts["this"].session_host_count, 0)
+}

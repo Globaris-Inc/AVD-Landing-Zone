@@ -239,3 +239,25 @@ variable "scaling_plan_time_zone" {
   type        = string
   default     = "UTC"
 }
+
+# ---------------------------------------------------------------------------
+# Session hosts (Section 9)
+# ---------------------------------------------------------------------------
+
+variable "session_host_count" {
+  description = "Number of session-host VMs (0 deploys none)."
+  type        = number
+  default     = 2
+}
+
+variable "session_host_vm_size" {
+  description = "Session-host VM size."
+  type        = string
+  default     = "Standard_D4as_v5"
+}
+
+variable "session_host_admin_username" {
+  description = "Local administrator username on session hosts."
+  type        = string
+  default     = "avdadmin"
+}

@@ -7,6 +7,14 @@
 
 ## Open
 
+### OQ-008 — Session-host pre-apply prerequisites (§9)
+Before the first session-host apply: (1) register `Microsoft.Compute/EncryptionAtHost` on the
+subscription — the AVM VM module defaults `encryption_at_host_enabled = true`, so apply fails without it;
+(2) confirm the AVD-agent DSC extension `modulesUrl` + `Configuration_*.zip` artifact + DSC
+`type_handler_version` against current Microsoft AVD docs (marked `# UNVERIFIED` in
+`modules/session-hosts/main.tf`).
+**Resolution:** _pending_
+
 ### OQ-007 — Scope down the CI principal from Owner?
 The bootstrap grants the OIDC service principal **Owner** on the AVD subscription(s) because the
 application landing zone creates **role assignments** (AVD/storage RBAC), which Contributor cannot do.

@@ -21,3 +21,9 @@ output "workspace_resource_id" {
   description = "Resource ID of the AVD workspace."
   value       = module.workspace.resource_id
 }
+
+output "host_pool_registration_token" {
+  description = "AVD host pool registration token (sensitive) for session-host agent registration."
+  value       = module.host_pool.registrationinfo_token
+  sensitive   = true
+}
