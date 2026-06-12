@@ -21,9 +21,9 @@
 | 8 | Management plane | 🟢 Complete | 2026-06-11 | workspace/host pool/app group/scaling plan (AVM) + native ws↔ag assoc. ✅ validate; reviewer-gated |
 | 9 | Session hosts | 🟢 Complete | 2026-06-11 | AVM VMs (for_each) + Entra join + AVD agent DSC, registered to host pool. ✅ validate; reviewer-gated |
 | 10 | Monitoring — AVD Insights | 🟢 Complete | 2026-06-12 | LAW + DCR + diag (host pool/workspace/KV/storage) + session-host AMA & DCR association. ✅ validate; self-reviewed (gate hit limit) |
-| 11 | Shared services | ⬜ Next | — | Compute Gallery + Automation account |
+| 11 | Shared services | 🟢 Complete | 2026-06-12 | Compute Gallery + Automation account (AVM) in shared RG. ✅ validate; self-reviewed |
 | 12 | CI/CD — GitHub Actions (OIDC) | 🟢 Complete | 2026-06-11 | plan-on-pr (dev) + apply-on-merge (prod, env-gated); pinned actions, OIDC, no secrets. ⚠️ YAML lint pending (no actionlint here) |
-| 13 | Documentation & acceptance | ⬜ Not started | — | |
+| 13 | Documentation & acceptance | ⬜ Next | — | README quickstart, ARCHITECTURE refresh, acceptance |
 
 **Status legend:** ⬜ Not started · 🟡 In progress · 🟢 Complete · 🔴 Blocked · 🔵 Needs review
 
@@ -48,6 +48,18 @@
 ---
 
 ## Sessions
+
+### Session 2026-06-12 (p) — Section 11: Shared services 🟢
+
+**modules/shared-services/** — AVM `compute-gallery` 0.2.0 (golden images) + `automation-automationaccount`
+0.2.0 (Basic SKU, runbooks), in the shared-services RG. Root `module "shared_services"`. Gallery name uses
+underscores (`gal_avd_<env>_<region>` — Compute Gallery forbids dashes). `terraform validate` ✅ clean.
+Custom image-build pipeline deferred (PROMPT §11 marks it optional). Reviewer gate unavailable (subagent
+session limit) — self-reviewed.
+
+**Next:** Section 13 — Documentation & acceptance (final section).
+
+---
 
 ### Session 2026-06-12 (o) — Section 10: Monitoring (AVD Insights) 🟢
 
