@@ -62,3 +62,13 @@ output "key_vault_uri" {
   description = "Key Vault URI, or null when deploy_networking = false."
   value       = try(module.security["this"].key_vault_uri, null)
 }
+
+output "host_pool_name" {
+  description = "AVD host pool name (session hosts register against it)."
+  value       = module.management_plane.host_pool_name
+}
+
+output "workspace_resource_id" {
+  description = "AVD workspace resource ID."
+  value       = module.management_plane.workspace_resource_id
+}

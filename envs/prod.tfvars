@@ -36,3 +36,7 @@ fslogix_account_replication_type = "ZRS"
 # --- Security (Section 7) ---
 tenant_id     = "<TENANT_ID>"
 key_vault_sku = "standard"
+
+# --- Management plane (Section 8) ---
+host_pool_type       = "Pooled"
+max_sessions_allowed = 8

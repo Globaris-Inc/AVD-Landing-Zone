@@ -151,3 +151,21 @@ module "security" {
   private_endpoint_subnet_resource_id = local.networking.private_endpoint_subnet_resource_id
   vault_private_dns_zone_resource_id  = azurerm_private_dns_zone.vault["this"].id
 }
+
+# ---------------------------------------------------------------------------
+# Management plane (PROMPT.md §8) — workspace, host pool, app group, scaling plan.
+# Not gated on networking (management-plane resources need no subnet).
+# ---------------------------------------------------------------------------
+module "management_plane" {
+  source = "../../modules/management-plane"
+
+  name_prefix          = local.name_prefix
+  location             = var.location
+  resource_group_name  = azurerm_resource_group.this["workload"].name
+  tags                 = local.common_tags
+  host_pool_type       = var.host_pool_type
+  max_sessions_allowed = var.max_sessions_allowed
+  app_group_type       = var.app_group_type
+  deploy_scaling_plan  = var.deploy_scaling_plan
+  time_zone            = var.scaling_plan_time_zone
+}
