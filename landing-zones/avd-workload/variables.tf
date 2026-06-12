@@ -184,3 +184,24 @@ variable "file_private_dns_zone_name" {
   type        = string
   default     = "privatelink.file.core.windows.net"
 }
+
+# ---------------------------------------------------------------------------
+# Security (Section 7)
+# ---------------------------------------------------------------------------
+
+variable "tenant_id" {
+  description = "Microsoft Entra tenant ID (used by the Key Vault)."
+  type        = string
+}
+
+variable "key_vault_sku" {
+  description = "Key Vault SKU (standard or premium)."
+  type        = string
+  default     = "standard"
+}
+
+variable "vault_private_dns_zone_name" {
+  description = "Private DNS zone name for Key Vault private endpoints."
+  type        = string
+  default     = "privatelink.vaultcore.azure.net"
+}

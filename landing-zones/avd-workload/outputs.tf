@@ -52,3 +52,13 @@ output "fslogix_share_unc_path" {
   description = "UNC path to the FSLogix profile share (configure on session hosts)."
   value       = module.fslogix_storage.fslogix_share_unc_path
 }
+
+output "key_vault_name" {
+  description = "Key Vault name, or null when deploy_networking = false."
+  value       = try(module.security["this"].key_vault_name, null)
+}
+
+output "key_vault_uri" {
+  description = "Key Vault URI, or null when deploy_networking = false."
+  value       = try(module.security["this"].key_vault_uri, null)
+}

@@ -17,8 +17,8 @@
 | 4 | Networking (spoke) | 🟢 Complete | 2026-06-10 | modules/networking + wired to root (azapi added). ✅ `terraform validate` clean |
 | 5 | Identity & domain join | 🟢 Complete | 2026-06-10 | entra-id-join (ADR-0003); modules/identity-join + wired. ✅ `terraform validate` clean |
 | 6 | FSLogix profile storage | 🟢 Complete | 2026-06-10 | Premium FileStorage (AADKERB) + file private endpoint + privatelink.file zone. ✅ validate clean; reviewer-gated |
-| 7 | Security — Key Vault, private endpoints, DNS | ⬜ Next | — | Key Vault + PE + privatelink.vaultcore zone |
-| 8 | Management plane | ⬜ Not started | — | |
+| 7 | Security — Key Vault, private endpoints, DNS | 🟢 Complete | 2026-06-11 | Key Vault (RBAC, private, purge-protected) + PE + vaultcore zone, gated. ✅ validate; reviewer-approved |
+| 8 | Management plane | ⬜ Next | — | workspace, host pool, app groups, scaling plan |
 | 9 | Session hosts | ⬜ Not started | — | |
 | 10 | Monitoring — AVD Insights | ⬜ Not started | — | |
 | 11 | Shared services | ⬜ Not started | — | |
@@ -48,6 +48,25 @@
 ---
 
 ## Sessions
+
+### Session 2026-06-11 (k) — Section 7: Security (Key Vault) 🟢
+
+**modules/security/** — `avm-res-keyvault-vault` 0.10.2: RBAC (default, `legacy_access_policies_enabled
+= false`), `purge_protection_enabled`, `public_network_access_enabled = false`, `network_acls` Deny,
+private endpoint (vault subresource implied) → vaultcore zone. Note: KV module uses `resource_group_name`
+(not `parent_id`).
+
+**Composition root** — native `azurerm_private_dns_zone.vault` (`privatelink.vaultcore.azure.net`) + link
++ `module "security"`, all gated on `deploy_networking` via `for_each` (the **go-forward gating pattern**;
+§6 aligns to it via the `fix/networking-toggle-correctness` branch). Added `tenant_id` / `key_vault_sku` /
+`vault_private_dns_zone_name` vars, KV outputs (`try(... ["this"] ...)`), and `envs/*.tfvars` values.
+
+**Reviewer:** approved, no blockers; applied 2 clarity fixes (clarified `deploy_security` coupling +
+expanded the DEVIATION comment). `terraform validate` ✅ clean.
+
+**Next:** Section 8 — Management plane (workspace, host pool, app groups, scaling plan).
+
+---
 
 ### Session 2026-06-11 (j) — Sections 1–5 audit + grouped fix branches
 
