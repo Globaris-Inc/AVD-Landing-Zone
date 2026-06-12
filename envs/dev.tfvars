@@ -33,3 +33,7 @@ identity_mode = "entra-id-join"
 # --- FSLogix storage (Section 6) ---
 fslogix_share_quota_gb           = 128
 fslogix_account_replication_type = "ZRS"
+
+# --- Security (Section 7) ---
+tenant_id     = "<TENANT_ID>"
+key_vault_sku = "standard"

@@ -104,3 +104,50 @@ module "fslogix_storage" {
   private_endpoint_subnet_resource_id = local.networking.private_endpoint_subnet_resource_id
   file_private_dns_zone_resource_id   = azurerm_private_dns_zone.file.id
 }
+
+# ---------------------------------------------------------------------------
+# Security (PROMPT.md §7) — Key Vault + private endpoint + vaultcore DNS zone.
+# Gated on deploy_networking (the KV private endpoint consumes the §4 PE subnet).
+# ---------------------------------------------------------------------------
+locals {
+  # No independent enable switch — §7 is bound to deploy_networking because the Key Vault private
+  # endpoint consumes the §4 PE subnet. for_each gating is the go-forward pattern (§6 aligns to it
+  # via the fix/networking-toggle-correctness branch).
+  deploy_security = var.deploy_networking ? toset(["this"]) : toset([])
+  key_vault_name  = "kv-${var.workload}-${var.environment}-${substr(sha1("${var.subscription_id}-${var.workload}-${var.environment}-kv"), 0, 6)}"
+}
+
+# DEVIATION: native azurerm for the vaultcore private DNS zone — a trivial resource; avoids the AVM
+# pdns module pulling extra azapi/time providers (same rationale as the §6 file zone).
+resource "azurerm_private_dns_zone" "vault" {
+  for_each = local.deploy_security
+
+  name                = var.vault_private_dns_zone_name
+  resource_group_name = azurerm_resource_group.this["workload"].name
+  tags                = local.common_tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "vault" {
+  for_each = local.deploy_security
+
+  name                  = "link-kv-${local.name_prefix}"
+  resource_group_name   = azurerm_resource_group.this["workload"].name
+  private_dns_zone_name = azurerm_private_dns_zone.vault["this"].name
+  virtual_network_id    = local.networking.virtual_network_resource_id
+  registration_enabled  = false
+  tags                  = local.common_tags
+}
+
+module "security" {
+  source   = "../../modules/security"
+  for_each = local.deploy_security
+
+  key_vault_name                      = local.key_vault_name
+  location                            = var.location
+  resource_group_name                 = azurerm_resource_group.this["workload"].name
+  tenant_id                           = var.tenant_id
+  sku_name                            = var.key_vault_sku
+  tags                                = local.common_tags
+  private_endpoint_subnet_resource_id = local.networking.private_endpoint_subnet_resource_id
+  vault_private_dns_zone_resource_id  = azurerm_private_dns_zone.vault["this"].id
+}
