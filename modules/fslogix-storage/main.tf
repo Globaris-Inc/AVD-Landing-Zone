@@ -4,6 +4,15 @@
 #
 # AVM: avm-res-storage-storageaccount 0.7.2 (uses parent_id; Azure Files auth via directory_type).
 
+locals {
+  diagnostic_settings = var.log_analytics_workspace_resource_id == "" ? {} : {
+    to_law = {
+      name                  = "diag-to-law"
+      workspace_resource_id = var.log_analytics_workspace_resource_id
+    }
+  }
+}
+
 module "storage_account" {
   source  = "Azure/avm-res-storage-storageaccount/azurerm"
   version = "0.7.2"
@@ -49,7 +58,7 @@ module "storage_account" {
     }
   }
 
-  # NOTE: the AVM storage module exposes per-service diagnostic inputs (diagnostic_settings_storage_account
-  # / _blob / _file), not a single `diagnostic_settings`. Storage diagnostics wiring is a §10 follow-up;
-  # var.log_analytics_workspace_resource_id is passed through but not yet consumed here.
+  # Storage diagnostics → Log Analytics (account-level metrics + file-service logs for FSLogix).
+  diagnostic_settings_storage_account = local.diagnostic_settings
+  diagnostic_settings_file            = local.diagnostic_settings
 }
