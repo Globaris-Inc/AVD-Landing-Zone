@@ -48,4 +48,8 @@ module "storage_account" {
       private_dns_zone_resource_ids = [var.file_private_dns_zone_resource_id]
     }
   }
+
+  # NOTE: the AVM storage module exposes per-service diagnostic inputs (diagnostic_settings_storage_account
+  # / _blob / _file), not a single `diagnostic_settings`. Storage diagnostics wiring is a §10 follow-up;
+  # var.log_analytics_workspace_resource_id is passed through but not yet consumed here.
 }

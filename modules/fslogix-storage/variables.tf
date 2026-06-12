@@ -72,3 +72,9 @@ variable "file_private_dns_zone_resource_id" {
   description = "privatelink.file.* private DNS zone resource ID to wire the private endpoint to."
   type        = string
 }
+
+variable "log_analytics_workspace_resource_id" {
+  description = "Log Analytics workspace resource ID for diagnostic settings (§10). Empty disables diagnostics."
+  type        = string
+  default     = ""
+}

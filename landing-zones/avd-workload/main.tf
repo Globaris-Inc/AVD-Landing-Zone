@@ -103,6 +103,7 @@ module "fslogix_storage" {
   directory_type                      = local.identity.azure_files_directory_service_options
   private_endpoint_subnet_resource_id = local.networking.private_endpoint_subnet_resource_id
   file_private_dns_zone_resource_id   = azurerm_private_dns_zone.file.id
+  log_analytics_workspace_resource_id = module.monitoring.log_analytics_workspace_resource_id
 }
 
 # ---------------------------------------------------------------------------
@@ -150,6 +151,7 @@ module "security" {
   tags                                = local.common_tags
   private_endpoint_subnet_resource_id = local.networking.private_endpoint_subnet_resource_id
   vault_private_dns_zone_resource_id  = azurerm_private_dns_zone.vault["this"].id
+  log_analytics_workspace_resource_id = module.monitoring.log_analytics_workspace_resource_id
 }
 
 # ---------------------------------------------------------------------------
@@ -168,6 +170,8 @@ module "management_plane" {
   app_group_type       = var.app_group_type
   deploy_scaling_plan  = var.deploy_scaling_plan
   time_zone            = var.scaling_plan_time_zone
+
+  log_analytics_workspace_resource_id = module.monitoring.log_analytics_workspace_resource_id
 }
 
 # ---------------------------------------------------------------------------
@@ -194,4 +198,18 @@ module "session_hosts" {
   host_pool_name               = module.management_plane.host_pool_name
   host_pool_registration_token = module.management_plane.host_pool_registration_token
   entra_id_join                = local.identity.entra_id_join
+}
+
+# ---------------------------------------------------------------------------
+# Monitoring (PROMPT.md §10) — Log Analytics + AVD data collection rule, in the shared-services RG.
+# ---------------------------------------------------------------------------
+module "monitoring" {
+  source = "../../modules/monitoring"
+
+  name_prefix                = local.name_prefix
+  location                   = var.location
+  resource_group_name        = azurerm_resource_group.this["shared"].name
+  resource_group_resource_id = azurerm_resource_group.this["shared"].id
+  tags                       = local.common_tags
+  retention_in_days          = var.log_retention_in_days
 }

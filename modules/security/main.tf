@@ -31,4 +31,11 @@ module "key_vault" {
       private_dns_zone_resource_ids = [var.vault_private_dns_zone_resource_id]
     }
   }
+
+  diagnostic_settings = var.log_analytics_workspace_resource_id == "" ? {} : {
+    to_law = {
+      name                  = "diag-to-law"
+      workspace_resource_id = var.log_analytics_workspace_resource_id
+    }
+  }
 }

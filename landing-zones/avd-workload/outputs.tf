@@ -77,3 +77,8 @@ output "session_host_count" {
   description = "Number of session hosts deployed (0 when none)."
   value       = try(module.session_hosts["this"].session_host_count, 0)
 }
+
+output "log_analytics_workspace_resource_id" {
+  description = "Log Analytics workspace resource ID."
+  value       = module.monitoring.log_analytics_workspace_resource_id
+}

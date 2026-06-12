@@ -10,6 +10,14 @@
 locals {
   load_balancer_type       = var.host_pool_type == "Personal" ? "Persistent" : "BreadthFirst"
   preferred_app_group_type = var.app_group_type == "RemoteApp" ? "RailApplications" : "Desktop"
+
+  # Diagnostic settings → Log Analytics (§10). Empty LAW id disables diagnostics.
+  diagnostic_settings = var.log_analytics_workspace_resource_id == "" ? {} : {
+    to_law = {
+      name                  = "diag-to-law"
+      workspace_resource_id = var.log_analytics_workspace_resource_id
+    }
+  }
 }
 
 module "host_pool" {
@@ -26,6 +34,8 @@ module "host_pool" {
   virtual_desktop_host_pool_maximum_sessions_allowed = var.max_sessions_allowed
   virtual_desktop_host_pool_start_vm_on_connect      = var.start_vm_on_connect
   virtual_desktop_host_pool_tags                     = var.tags
+
+  diagnostic_settings = local.diagnostic_settings
 }
 
 module "application_group" {
@@ -48,6 +58,8 @@ module "workspace" {
   virtual_desktop_workspace_location            = var.location
   virtual_desktop_workspace_resource_group_name = var.resource_group_name
   virtual_desktop_workspace_tags                = var.tags
+
+  diagnostic_settings = local.diagnostic_settings
 }
 
 # DEVIATION: native azurerm — the AVM workspace module exposes no application-group association input.

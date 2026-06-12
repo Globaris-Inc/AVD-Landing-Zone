@@ -68,3 +68,9 @@ variable "deploy_scaling_plan" {
   type        = bool
   default     = true
 }
+
+variable "log_analytics_workspace_resource_id" {
+  description = "Log Analytics workspace resource ID for diagnostic settings (§10). Empty disables diagnostics."
+  type        = string
+  default     = ""
+}
