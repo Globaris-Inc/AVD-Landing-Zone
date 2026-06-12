@@ -10,9 +10,10 @@
 #   - Container immutability policy (unlocked WORM demonstration)
 #   - Role assignments: deployer -> KV Crypto Officer; UAMI -> KV Crypto Encryption User
 #
-# DEVIATION: Storage Account allows public access from var.ip_allow_list (deployer + GitHub
-# Actions runners). The security section (PROMPT.md §7) adds a Private Endpoint and removes the
-# IP rules. Until then the account stays default_action = "Deny" with an explicit allow-list.
+# DEVIATION: the state Storage Account is reachable from var.ip_allow_list (deployer + GitHub Actions
+# runners) over public network with default_action = "Deny". This IP allow-list is the PERMANENT posture
+# for the bootstrap state account — a private endpoint would need a spoke VNet, which is created by the
+# very state this account stores (chicken-and-egg). Keep the deny + allow-list.
 #
 # DEVIATION: Immutability policy is set with locked = false — a locked policy blocks blob
 # overwrites and would break active Terraform state writes. Flip to locked = true only on a
@@ -26,8 +27,9 @@ locals {
       managedBy   = "iac-terraform"
       owner       = "platform-team"
       costCenter  = "platform"
-      criticality = "high"
-      purpose     = "tfstate-backend"
+      criticality        = "high"
+      dataClassification = "confidential"
+      purpose            = "tfstate-backend"
     },
     var.tags
   )
@@ -78,9 +80,15 @@ resource "azurerm_key_vault" "tfstate" {
   soft_delete_retention_days = var.kv_soft_delete_retention_days
   purge_protection_enabled   = true
 
-  # Public access is acceptable for the bootstrap KV: used only during the one-time apply and
-  # internally by the Storage Account (trusted services) to wrap/unwrap the CMK.
+  # Public endpoint stays enabled (Storage reaches the KV via trusted services for the CMK), but
+  # access is restricted to the deployer/runner IPs — not the whole internet.
   public_network_access_enabled = true
+
+  network_acls {
+    default_action = "Deny"
+    bypass         = "AzureServices"
+    ip_rules       = var.ip_allow_list
+  }
 
   tags = local.common_tags
 }
@@ -166,7 +174,7 @@ resource "azurerm_storage_account" "tfstate" {
     }
   }
 
-  # DEVIATION: temporary public access — see file header. Removed when §7 adds a Private Endpoint.
+  # DEVIATION: public access restricted to var.ip_allow_list — permanent for the bootstrap state SA (see header).
   network_rules {
     default_action = "Deny"
     bypass         = ["AzureServices"]

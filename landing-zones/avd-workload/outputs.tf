@@ -44,13 +44,13 @@ output "identity_mode" {
 }
 
 output "fslogix_storage_account_name" {
-  description = "Name of the FSLogix storage account."
-  value       = module.fslogix_storage.storage_account_name
+  description = "Name of the FSLogix storage account, or null when deploy_networking = false."
+  value       = try(module.fslogix_storage["this"].storage_account_name, null)
 }
 
 output "fslogix_share_unc_path" {
-  description = "UNC path to the FSLogix profile share (configure on session hosts)."
-  value       = module.fslogix_storage.fslogix_share_unc_path
+  description = "UNC path to the FSLogix profile share, or null when deploy_networking = false."
+  value       = try(module.fslogix_storage["this"].fslogix_share_unc_path, null)
 }
 
 output "key_vault_name" {

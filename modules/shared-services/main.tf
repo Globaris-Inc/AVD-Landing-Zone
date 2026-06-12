@@ -24,4 +24,14 @@ module "automation_account" {
   resource_group_name = var.resource_group_name
   sku                 = var.automation_sku
   tags                = var.tags
+
+  diagnostic_settings = var.log_analytics_workspace_resource_id == "" ? {} : {
+    to_law = {
+      name                  = "diag-to-law"
+      workspace_resource_id = var.log_analytics_workspace_resource_id
+    }
+  }
 }
+
+# NOTE: the AVM compute-gallery 0.2.0 module exposes no diagnostic_settings input — gallery diagnostics
+# are not wired (gallery emits little operational telemetry; revisit if a newer module version adds it).

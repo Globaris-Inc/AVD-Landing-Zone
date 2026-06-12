@@ -49,6 +49,29 @@
 
 ## Sessions
 
+### Session 2026-06-12 (r) — Four-role QA pass + fixes
+
+Spun up all four role subagents for a final per-lane QA of the completed build. Verdicts: cloud-engineer
+**ship-ready**; architect coherent; devsecops no blockers; code-reviewer **conditional GO**. Headline
+finding (engineer + reviewer): the **§6 FSLogix block on `main` was never gated** — the audit's
+`fix/networking-toggle-correctness` branch was never merged — so `deploy_networking = false` null-derefs,
+it's inconsistent with §7/§9, and the fix branches now conflict with §10. Applied the fixes **directly on
+`main`** (both roots `terraform validate` ✅):
+
+1. **Re-gated §6 FSLogix** (DNS zone/link + storage module on `local.deploy_fslogix` via `for_each`;
+   `try()`-guarded outputs) + **region token** in the storage account name.
+   *(supersedes `fix/networking-toggle-correctness` + `fix/naming-tagging`)*
+2. **Bootstrap KV** `network_acls` (Deny + IP allow-list) + `dataClassification` tag; corrected the stale
+   state-SA "§7 adds a PE" comments (IP allow-list is the permanent posture). *(supersedes `fix/bootstrap-security`)*
+3. **Automation account diagnostics → LAW** (compute-gallery 0.2.0 has no diag input — noted).
+4. **ADR-0004** (native private DNS zones); softened the ARCHITECTURE.md BCDR/RTO-RPO claims to match code.
+
+**The four `fix/*` branches are now superseded by these main-line fixes — safe to delete.** Remaining:
+**OQ-007** (CI principal Owner → Contributor + UAA — decision) and **OQ-008** (pre-apply: EncryptionAtHost
+feature + AVD-agent DSC artifact).
+
+---
+
 ### Session 2026-06-12 (q) — Section 13: Documentation & acceptance 🟢 — BUILD COMPLETE
 
 Refreshed `README.md` (components table, deploy flow, pre-apply checklist) and `ARCHITECTURE.md` (final

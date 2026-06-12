@@ -33,3 +33,9 @@ variable "automation_sku" {
     error_message = "automation_sku must be Basic or Free."
   }
 }
+
+variable "log_analytics_workspace_resource_id" {
+  description = "Log Analytics workspace resource ID for Automation diagnostics (§10). Empty disables diagnostics."
+  type        = string
+  default     = ""
+}
