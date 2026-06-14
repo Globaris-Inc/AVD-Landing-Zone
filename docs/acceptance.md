@@ -6,11 +6,12 @@ landing zone (PROMPT.md §13).
 ## Verified in this repo
 
 - **`terraform validate` clean** on both roots: `bootstrap/` and `landing-zones/avd-workload/`
-  (Terraform v1.15.x, providers + all AVM modules resolved). One warning originates *inside* the pinned
+  (Terraform v1.15.6, providers + all AVM modules resolved; CI pins 1.9.8 — both satisfy `>= 1.9`). One warning originates *inside* the pinned
   Log Analytics AVM module (`local_authentication_disabled`) and is not actionable here.
 - **`terraform fmt -recursive`** clean.
-- Every section passed the **`code-reviewer` gate** before commit (except §10/§11, where the reviewer
-  subagent hit a session limit and the changes were self-reviewed — run `/code-review` on those).
+- Every section passed the **`code-reviewer` gate**. §10/§11 were self-reviewed at section time (the
+  reviewer subagent hit a session limit), then **re-reviewed in a follow-up gap-closing pass** that
+  caught and fixed a storage-diagnostics bug (empty log/metric categories).
 - **No secrets / real subscription/tenant IDs** committed — all `<PLACEHOLDER>`s.
 
 > Not verified here: a real `terraform plan`/`apply` against a subscription (no cloud credentials in the

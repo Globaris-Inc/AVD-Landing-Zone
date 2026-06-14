@@ -42,6 +42,9 @@ module "nsg" {
   resource_group_name = var.resource_group_name
   tags                = var.tags
 
+  # These two rules explicitly restate Azure's platform default NSG rules (AllowVnetInBound /
+  # DenyAllInBound) to make the reverse-connect intent visible and auditable. Outbound is left to the
+  # platform defaults so the AVD agents can reach the control plane over 443.
   security_rules = {
     allow_vnet_inbound = {
       name                       = "Allow-VnetInbound"
@@ -126,7 +129,9 @@ module "vnet" {
       network_security_group = {
         id = module.nsg.resource_id
       }
-      # Private endpoints require network policies disabled on their subnet.
+      # Private endpoints need PE network policies relaxed on their subnet. "Disabled" turns off both
+      # NSG and UDR enforcement for PEs; switch to "NetworkSecurityGroupEnabled" to keep NSG rules
+      # applied to private-endpoint NICs.
       private_endpoint_network_policies = "Disabled"
     }
   }

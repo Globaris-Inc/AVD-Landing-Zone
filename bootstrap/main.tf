@@ -22,17 +22,21 @@
 locals {
   common_tags = merge(
     {
-      workload    = var.workload
-      environment = "shared"
-      managedBy   = "iac-terraform"
-      owner       = "platform-team"
-      costCenter  = "platform"
+      workload           = var.workload
+      environment        = "shared"
+      managedBy          = "iac-terraform"
+      owner              = "platform-team"
+      costCenter         = "platform"
       criticality        = "high"
       dataClassification = "confidential"
       purpose            = "tfstate-backend"
     },
     var.tags
   )
+
+  # Key Vault network_acls reject /31 and /32 suffixes (bare IPs only); strip /32 from the allow-list.
+  # The storage account keeps the suffix (it accepts /32 CIDRs).
+  kv_ip_rules = [for ip in var.ip_allow_list : trimsuffix(ip, "/32")]
 }
 
 data "azurerm_client_config" "current" {}
@@ -87,7 +91,7 @@ resource "azurerm_key_vault" "tfstate" {
   network_acls {
     default_action = "Deny"
     bypass         = "AzureServices"
-    ip_rules       = var.ip_allow_list
+    ip_rules       = local.kv_ip_rules
   }
 
   tags = local.common_tags

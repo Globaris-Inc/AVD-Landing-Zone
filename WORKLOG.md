@@ -49,6 +49,27 @@
 
 ## Sessions
 
+### Session 2026-06-12 (s) — Gap-closing review + fixes
+
+A stale "Status" section in `README.md` (which the lane-scoped QA didn't cover) prompted a **gap-closing
+review of the un-/under-reviewed surfaces**: §10/§11 code, the post-QA fixes, and all docs.
+
+**code-reviewer (code):** found **1 BLOCKER** — FSLogix storage diagnostics collected **nothing** (the AVM
+storage **v2** diagnostic interface defaults `logs`/`metrics` to empty, unlike the v1 interface KV/automation
+use). Fixed: account `metrics = AllMetrics`; file `logs = allLogs` + `metrics = Transaction`. Also: storage
+name could exceed 24 chars at max inputs → `substr`-capped to 24; bootstrap KV `ip_rules` reject `/32` →
+`local.kv_ip_rules` strips it.
+
+**cloud-solutions-architect (docs):** no blockers; fixed stale `naming-and-tagging.md` examples (KV/storage
+names didn't match code), the tag-inheritance wording (Azure doesn't inherit RG tags; AVD modules use
+prefixed `*_tags`), `acceptance.md` TF version + §10/§11 now-reviewed status, `ARCHITECTURE.md` OQ-006 moved
+out of "Open decisions", README `azuread`-is-bootstrap-only.
+
+Also landed the `fix/networking-nsg` comments + the README "How it's built" rewrite (replaced the stale
+Status section). The four `fix/*` branches are now fully superseded → **deleted**. Both roots `validate` ✅.
+
+---
+
 ### Session 2026-06-12 (r) — Four-role QA pass + fixes
 
 Spun up all four role subagents for a final per-lane QA of the completed build. Verdicts: cloud-engineer

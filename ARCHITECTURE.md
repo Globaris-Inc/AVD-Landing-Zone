@@ -70,5 +70,6 @@ An **application** landing zone for AVD, on top of an existing CAF **platform** 
 - **State backend:** GZRS + blob versioning (bootstrap).
 
 ## Open decisions
-OQ-006 (identity model — resolved: Entra ID join), OQ-007 (CI principal Owner → Contributor + UAA),
-OQ-008 (EncryptionAtHost feature + AVD-agent DSC artifact). See [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
+OQ-007 (CI principal Owner → Contributor + UAA) and OQ-008 (EncryptionAtHost feature + AVD-agent DSC
+artifact). (OQ-006 identity model is **resolved** — Entra ID join, ADR-0003.) See
+[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
