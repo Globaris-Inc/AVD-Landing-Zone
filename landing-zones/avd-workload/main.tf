@@ -67,8 +67,9 @@ locals {
   # dereferences a null local.networking when deploy_networking = false (mirrors §7/§9).
   deploy_fslogix = var.deploy_networking ? toset(["this"]) : toset([])
 
-  # Globally-unique, deterministic storage account name incl. region token (<=24 lowercase alnum).
-  fslogix_storage_account_name = lower("st${var.workload}${var.environment}${var.location_short}${substr(sha1("${var.subscription_id}-${var.workload}-${var.environment}-fslogix"), 0, 6)}")
+  # Globally-unique, deterministic storage account name incl. region token. substr to 24 guarantees the
+  # Azure limit even at max-length inputs (worst case is 26 before the cap).
+  fslogix_storage_account_name = substr(lower("st${var.workload}${var.environment}${var.location_short}${substr(sha1("${var.subscription_id}-${var.workload}-${var.environment}-fslogix"), 0, 6)}"), 0, 24)
 }
 
 # DEVIATION: native azurerm for the private DNS zone — a trivial resource; avoids the AVM pdns

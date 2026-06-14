@@ -5,10 +5,21 @@
 # AVM: avm-res-storage-storageaccount 0.7.2 (uses parent_id; Azure Files auth via directory_type).
 
 locals {
-  diagnostic_settings = var.log_analytics_workspace_resource_id == "" ? {} : {
+  # AVM storage uses the v2 diagnostic interface — `logs`/`metrics` default to EMPTY (unlike the v1
+  # interface used by KV/automation), so categories must be set explicitly or nothing is collected.
+  diag_account = var.log_analytics_workspace_resource_id == "" ? {} : {
     to_law = {
       name                  = "diag-to-law"
       workspace_resource_id = var.log_analytics_workspace_resource_id
+      metrics               = [{ category = "AllMetrics" }] # account level exposes metrics only
+    }
+  }
+  diag_file = var.log_analytics_workspace_resource_id == "" ? {} : {
+    to_law = {
+      name                  = "diag-to-law"
+      workspace_resource_id = var.log_analytics_workspace_resource_id
+      logs                  = [{ category_group = "allLogs" }] # StorageRead/Write/Delete
+      metrics               = [{ category = "Transaction" }]
     }
   }
 }
@@ -58,7 +69,7 @@ module "storage_account" {
     }
   }
 
-  # Storage diagnostics → Log Analytics (account-level metrics + file-service logs for FSLogix).
-  diagnostic_settings_storage_account = local.diagnostic_settings
-  diagnostic_settings_file            = local.diagnostic_settings
+  # Storage diagnostics → Log Analytics (account-level metrics + file-service logs/metrics for FSLogix).
+  diagnostic_settings_storage_account = local.diag_account
+  diagnostic_settings_file            = local.diag_file
 }

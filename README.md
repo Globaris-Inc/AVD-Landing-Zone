@@ -45,8 +45,8 @@ docs/                 naming/tagging, role workflow, acceptance
 1. A deployed **CAF platform landing zone** (connectivity / identity / management). Not created here.
 2. **Microsoft Entra ID join** for session hosts is the baseline (ADR-0003). Entra Kerberos enables
    FSLogix on Azure Files. (`entra-ds` / `ad-ds` are toggle options.)
-3. Tooling: **Terraform ≥ 1.9**, `azurerm` ≥ 4, `azuread` ≥ 3, Azure CLI. On Windows, set
-   `git config --global core.longpaths true` (AVM modules nest deeply).
+3. Tooling: **Terraform ≥ 1.9**, `azurerm` ≥ 4, Azure CLI (plus `azuread` ≥ 3 for `bootstrap/` only).
+   On Windows, set `git config --global core.longpaths true` (AVM modules nest deeply).
 4. Subscription(s) for the AVD **workload** (+ optional shared-services).
 
 ## Deploy
@@ -72,9 +72,8 @@ terraform plan -var-file=../../envs/dev.tfvars
   AVD-agent DSC artifact URL/version (marked `# UNVERIFIED`).
 - Replace every `<PLACEHOLDER>` in `envs/*` and `bootstrap/terraform.tfvars` (never committed).
 
-## Status
+## How it's built
 
-Sections **1–12 complete** and **locally `terraform validate`-clean**; §13 (docs) in progress. Progress
-and decisions: [WORKLOG.md](WORKLOG.md) · [DECISIONS.md](DECISIONS.md). Built section-by-section with a
-four-role subagent workflow ([docs/workflow.md](docs/workflow.md)): Architect → Cloud Engineer →
-DevSecOps → Code Reviewer.
+Built section-by-section under a governance contract ([CLAUDE.md](CLAUDE.md), [PROMPT.md](PROMPT.md)) with
+four role subagents — Architect → Cloud Engineer → DevSecOps → Code Reviewer ([docs/workflow.md](docs/workflow.md)).
+**Progress is tracked in [WORKLOG.md](WORKLOG.md)** (source of truth); decisions in [DECISIONS.md](DECISIONS.md).

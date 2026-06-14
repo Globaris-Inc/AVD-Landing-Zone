@@ -35,8 +35,8 @@ no-dash names (storage accounts, Key Vault) drop separators and may append a sho
 | AVD workspace | `vdws` | `vdws-avd-prod-eus` |
 | AVD scaling plan | `vdscaling` | `vdscaling-avd-prod-eus` |
 | Session host VM | `vm` | `vm-avd-prod` (+ instance suffix from the host pool) |
-| Storage account (FSLogix) | `st` | `stavdprodeus01` |
-| Key Vault | `kv` | `kv-avd-prod-eus` |
+| Storage account (FSLogix) | `st` | `stavdprodeus2<hash>` (region token + short hash, capped to 24) |
+| Key Vault | `kv` | `kv-avd-prod-<hash>` (short hash, no region token) |
 | Log Analytics workspace | `log` | `log-avd-prod-eus` |
 | Data collection rule | `dcr` | `dcr-avd-prod-eus` |
 | Compute gallery | `gal` | `gal_avd_prod_eus` (underscores; dashes invalid) |
@@ -48,7 +48,9 @@ no-dash names (storage accounts, Key Vault) drop separators and may append a sho
 
 ## Minimum tags
 
-Applied at resource-group scope and inherited/echoed on resources via a `tags` input.
+Applied to the resource groups and **passed explicitly to every resource** via a `tags` input — Azure
+does **not** inherit RG tags. (The AVD `desktopvirtualization` modules take tags via prefixed inputs,
+e.g. `virtual_desktop_host_pool_tags`, `virtual_desktop_workspace_tags`.)
 
 | Tag | Purpose | Example |
 |-----|---------|---------|
