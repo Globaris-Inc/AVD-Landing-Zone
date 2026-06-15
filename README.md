@@ -67,9 +67,9 @@ terraform plan -var-file=../../envs/dev.tfvars
 
 ## Before the first apply
 
-- **OQ-006/007/008** in [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md): confirm the identity model; consider
-  scoping the CI principal down from Owner; register `Microsoft.Compute/EncryptionAtHost`; confirm the
-  AVD-agent DSC artifact URL/version (marked `# UNVERIFIED`).
+- Open questions OQ-006/007/008 are all **resolved** (see [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)). The one
+  operational step that remains: register `Microsoft.Compute/EncryptionAtHost` on the subscription, or set
+  `session_host_encryption_at_host = false` in `envs/*.tfvars` if it isn't registered.
 - Replace every `<PLACEHOLDER>` in `envs/*` and `bootstrap/terraform.tfvars` (never committed).
 
 ## How it's built

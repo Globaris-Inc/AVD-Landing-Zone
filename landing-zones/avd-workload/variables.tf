@@ -262,6 +262,12 @@ variable "session_host_admin_username" {
   default     = "avdadmin"
 }
 
+variable "session_host_encryption_at_host" {
+  description = "Enable encryption at host on session hosts (requires the Microsoft.Compute/EncryptionAtHost subscription feature — OQ-008). Set false if not registered."
+  type        = bool
+  default     = true
+}
+
 # ---------------------------------------------------------------------------
 # Monitoring (Section 10)
 # ---------------------------------------------------------------------------

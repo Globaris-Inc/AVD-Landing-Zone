@@ -49,6 +49,30 @@
 
 ## Sessions
 
+### Session 2026-06-14 (t) — Resolve OQ-007 + OQ-008
+
+Closed the two remaining open questions in code + docs (both roots `terraform validate` ✅).
+
+**OQ-007 — CI principal Owner → Contributor + User Access Administrator (ADR-0005).**
+`bootstrap/identity.tf`: replaced `oidc_owner_subscription` (Owner) with `oidc_contributor_subscription`
+(Contributor) + `oidc_user_access_admin_subscription` (User Access Administrator), both `for_each` over the
+target subscriptions. Header comment + ADR-0002 point 4 marked superseded; added **ADR-0005**.
+
+**OQ-008 — encryption-at-host toggle + always-latest DSC artifact.**
+- `encryption_at_host_enabled` toggle threaded module → root: `modules/session-hosts/{variables,main}.tf`
+  (default `true`) + `landing-zones/avd-workload/{variables,main}.tf` (`session_host_encryption_at_host`).
+  Remaining operational step: register `Microsoft.Compute/EncryptionAtHost` or set the toggle `false`.
+- AVD-agent DSC `modulesUrl` now `var.avd_agent_dsc_modules_url`, defaulting to Microsoft's always-latest
+  `galleryartifacts/Configuration.zip` (pin a versioned zip for reproducibility). `# UNVERIFIED` replaced
+  with a dated note.
+
+**Docs:** OPEN-QUESTIONS (both → Resolved, no open items), DECISIONS (ADR-0005), ARCHITECTURE ("Open
+decisions" → none), bootstrap/README (RBAC rows), docs/acceptance (pre-apply items now resolved), README.
+
+**Suggested commit:** `fix(security): scope CI principal to Contributor+UAA (OQ-007); encryption-at-host toggle + configurable DSC artifact (OQ-008)`
+
+---
+
 ### Session 2026-06-12 (s) — Gap-closing review + fixes
 
 A stale "Status" section in `README.md` (which the lane-scoped QA didn't cover) prompted a **gap-closing

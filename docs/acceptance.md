@@ -24,12 +24,14 @@ landing zone (PROMPT.md §13).
    (`AZURE_CLIENT_ID` / `AZURE_TENANT_ID` / `AZURE_SUBSCRIPTION_ID`). Create the **`production`** GitHub
    Environment with a required reviewer.
 2. Replace every `<PLACEHOLDER>` in `envs/*.tfvars` (subscription/tenant IDs, owner, cost center).
-3. **OQ-008:** register `Microsoft.Compute/EncryptionAtHost` on the subscription (the VM module defaults
-   `encryption_at_host_enabled = true`).
-4. **OQ-008:** confirm the AVD-agent DSC `modulesUrl` / `Configuration_*.zip` / `type_handler_version`
-   in `modules/session-hosts/main.tf` against current Microsoft AVD docs (marked `# UNVERIFIED`).
-5. **OQ-007:** consider scoping the CI service principal from **Owner** to **Contributor + User Access
-   Administrator** before enabling the apply workflow.
+3. **OQ-008 (resolved):** either register `Microsoft.Compute/EncryptionAtHost` on the subscription
+   (`az feature register --namespace Microsoft.Compute --name EncryptionAtHost`) **or** set
+   `session_host_encryption_at_host = false` in `envs/*.tfvars` if it isn't registered. Default is `true`.
+4. **OQ-008 (resolved):** the AVD-agent DSC `modulesUrl` defaults to the always-latest
+   `galleryartifacts/Configuration.zip`; pin a versioned `Configuration_x.y.z.zip` via
+   `var.avd_agent_dsc_modules_url` in `modules/session-hosts` if you need reproducible builds.
+5. **OQ-007 (resolved):** the CI service principal is scoped to **Contributor + User Access Administrator**
+   (ADR-0005) — no further action needed before enabling the apply workflow.
 6. Run `terraform plan` (CI `plan-on-pr`) and review before merging.
 
 ## Acceptance criteria (post-deploy)

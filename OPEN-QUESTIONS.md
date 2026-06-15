@@ -7,24 +7,27 @@
 
 ## Open
 
-### OQ-008 — Session-host pre-apply prerequisites (§9)
-Before the first session-host apply: (1) register `Microsoft.Compute/EncryptionAtHost` on the
-subscription — the AVM VM module defaults `encryption_at_host_enabled = true`, so apply fails without it;
-(2) confirm the AVD-agent DSC extension `modulesUrl` + `Configuration_*.zip` artifact + DSC
-`type_handler_version` against current Microsoft AVD docs (marked `# UNVERIFIED` in
-`modules/session-hosts/main.tf`).
-**Resolution:** _pending_
-
-### OQ-007 — Scope down the CI principal from Owner?
-The bootstrap grants the OIDC service principal **Owner** on the AVD subscription(s) because the
-application landing zone creates **role assignments** (AVD/storage RBAC), which Contributor cannot do.
-**Question:** Reduce to **Contributor + User Access Administrator** at subscription scope, or keep Owner?
-If reducing, confirm whether any resource needs broader rights. (See DECISIONS.md ADR-0002, `bootstrap/identity.tf`.)
-**Resolution:** _pending_
+_None._
 
 ---
 
 ## Resolved
+
+### OQ-008 — Session-host pre-apply prerequisites (§9) → **toggle + always-latest DSC artifact**
+**Resolution (2026-06-14):** (1) Encryption-at-host is now an explicit toggle,
+`var.session_host_encryption_at_host` → `encryption_at_host_enabled` (default `true`). The one remaining
+operational step is registering `Microsoft.Compute/EncryptionAtHost` on the subscription
+(`az feature register --namespace Microsoft.Compute --name EncryptionAtHost`) **or** setting the toggle
+`false` if it isn't registered. (2) The AVD-agent DSC `modulesUrl` now defaults to Microsoft's
+always-latest `galleryartifacts/Configuration.zip` via `var.avd_agent_dsc_modules_url` (pin a versioned
+`Configuration_x.y.z.zip` there for reproducible builds); the `# UNVERIFIED` marker is replaced with a
+dated note. See `modules/session-hosts/{main,variables}.tf`.
+
+### OQ-007 — Scope down the CI principal from Owner? → **Contributor + User Access Administrator**
+**Resolution (2026-06-14):** Reduced from **Owner** to **Contributor + User Access Administrator** at
+subscription scope (least-privilege). Contributor manages resources; User Access Administrator lets the
+application landing zone create role assignments (AVD/storage RBAC), which Contributor cannot. See
+DECISIONS.md ADR-0005 and `bootstrap/identity.tf`.
 
 ### OQ-006 — Identity model for session hosts → **Microsoft Entra ID join**
 **Resolution (2026-06-10):** `identity_mode = "entra-id-join"` (cloud-only). Session hosts Entra-joined via
