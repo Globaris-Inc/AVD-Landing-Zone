@@ -96,3 +96,15 @@ variable "entra_id_join" {
   type        = bool
   default     = true
 }
+
+variable "encryption_at_host_enabled" {
+  description = "Enable encryption at host. Requires the Microsoft.Compute/EncryptionAtHost feature registered on the subscription; set false if it isn't registered yet."
+  type        = bool
+  default     = true
+}
+
+variable "avd_agent_dsc_modules_url" {
+  description = "URL of the AVD agent DSC configuration package. Default is Microsoft's always-latest Configuration.zip; pin a versioned Configuration_x.y.z.zip for reproducible builds."
+  type        = string
+  default     = "https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/Configuration.zip"
+}

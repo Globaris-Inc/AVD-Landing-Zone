@@ -70,6 +70,7 @@ An **application** landing zone for AVD, on top of an existing CAF **platform** 
 - **State backend:** GZRS + blob versioning (bootstrap).
 
 ## Open decisions
-OQ-007 (CI principal Owner → Contributor + UAA) and OQ-008 (EncryptionAtHost feature + AVD-agent DSC
-artifact). (OQ-006 identity model is **resolved** — Entra ID join, ADR-0003.) See
-[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).
+None outstanding. Recently resolved: OQ-006 identity model (Entra ID join, ADR-0003); OQ-007 CI principal
+scoped Owner → Contributor + User Access Administrator (ADR-0005); OQ-008 encryption-at-host toggle +
+always-latest AVD-agent DSC artifact. The one operational pre-apply step is registering
+`Microsoft.Compute/EncryptionAtHost` (or setting the toggle off). See [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md).

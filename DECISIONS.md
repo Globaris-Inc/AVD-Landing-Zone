@@ -67,6 +67,7 @@ repo `Azure-Architecture`, adapted for an **application** landing zone.
 4. **RBAC scope = Owner on the AVD subscription(s)** (workload + optional shared-services), **not** the
    Tenant Root management group — management groups are platform scope, out of scope here. Owner is used
    because the application landing zone creates role assignments; scope-down is tracked in OQ-007.
+   _(Superseded by ADR-0005: scoped down to Contributor + User Access Administrator.)_
 5. **Temporary public access** on the state Storage Account via an IP allow-list, removed when §7 adds a
    Private Endpoint (documented `# DEVIATION`).
 
@@ -139,3 +140,41 @@ in the composition root, rather than `Azure/avm-res-network-privatednszone`. Doc
 ### Alternatives considered
 - **`avm-res-network-privatednszone`** — extra provider deps + schema ambiguity for a one-resource need.
 - **Consume platform-provided zones** — preferred in a mature platform LZ; not assumed available here.
+
+---
+
+## ADR-0005 — Scope the CI principal to Contributor + User Access Administrator (not Owner)
+
+- **Status:** Accepted
+- **Date:** 2026-06-14
+- **Deciders:** DevSecOps Engineer + Project owner (resolves OQ-007)
+
+### Context
+ADR-0002 (point 4) granted the OIDC CI service principal **Owner** on the AVD subscription(s) because the
+application landing zone creates **role assignments** (AVD RBAC, storage data-plane RBAC), which the
+**Contributor** role cannot. Owner is broader than the pipeline needs and was flagged for scope-down in
+OQ-007.
+
+### Decision
+Replace the single **Owner** assignment with two least-privilege assignments at subscription scope:
+1. **Contributor** — create/manage all AVD landing-zone resources.
+2. **User Access Administrator** — create the role assignments the landing zone needs (e.g. session-host
+   Entra login, Storage Blob/File data-plane roles) that Contributor is denied.
+
+Implemented in `bootstrap/identity.tf` as `azurerm_role_assignment.oidc_contributor_subscription` and
+`oidc_user_access_admin_subscription` (both `for_each` over the target subscriptions). The state-account
+`Storage Blob Data Contributor` assignment is unchanged.
+
+### Consequences
+- **Pro:** least privilege — the CI principal can no longer manage Blueprints/locks or other Owner-only
+  surfaces it never uses, while retaining the ability to assign roles. Closes OQ-007.
+- **Con:** if a future resource needs an Owner-only action, an additional narrowly-scoped role assignment
+  must be added rather than relying on blanket Owner.
+
+### Alternatives considered
+- **Keep Owner** — rejected: broader than required; fails least-privilege review.
+- **Contributor only** — rejected: cannot create role assignments, so AVD/storage RBAC apply would fail.
+- **Custom role** with an explicit action allow-list — more precise, but higher maintenance; the two
+  built-in roles are the standard, well-understood pairing for this need.
+
+> Supersedes ADR-0002 point 4 (Owner on the AVD subscription).

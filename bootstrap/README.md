@@ -18,7 +18,7 @@ modules (`landing-zones/`, etc.) use the remote backend created here.
 |---|---|
 | Azure CLI ≥ 2.x | `az --version` |
 | Terraform ≥ 1.9 | `terraform --version` |
-| **Owner** on the AVD subscription(s) | to create RGs and role assignments |
+| **Owner or User Access Administrator + Contributor** on the AVD subscription(s) | to run bootstrap, which itself grants the CI principal Contributor + User Access Administrator (ADR-0005) |
 | **App Administrator / Privileged Role Admin** on Entra ID | to create the app registration |
 
 ---
@@ -77,7 +77,8 @@ terraform output -json
 - **Storage Account `sttfstate<suffix>`** — GZRS, **CMK** encryption, blob **versioning**, **shared
   keys disabled** (Entra-ID/RBAC only), `tfstate` container with an unlocked immutability policy.
 - **OIDC SP `sp-avd-lz-cicd`** — no secret; federated creds for `main` push, `pull_request`, and the
-  `production` environment; **Owner on the AVD subscription(s)** (scope-down tracked as OQ-007).
+  `production` environment; **Contributor + User Access Administrator on the AVD subscription(s)** (ADR-0005,
+  least-privilege replacement for Owner), plus Storage Blob Data Contributor on the state account.
 
 ---
 
@@ -87,7 +88,7 @@ terraform output -json
 |---|---|---|
 | Storage allows public access (IP allow-list) | the AVD spoke VNet doesn't exist yet | PROMPT.md §7 adds a Private Endpoint; keep `default_action = "Deny"`, drop the IP rules |
 | Immutability policy `locked = false` | a locked policy blocks state overwrites | flip to `true` only on a decommissioned/archived container |
-| OIDC SP = Owner on the subscription | app LZ must create role assignments | OQ-007: reduce to Contributor + User Access Administrator |
+| OIDC SP = Contributor + User Access Administrator (not Owner) | app LZ must create role assignments, which Contributor alone cannot | resolved (ADR-0005, OQ-007); add a narrow role assignment if an Owner-only action is ever needed |
 
 ---
 

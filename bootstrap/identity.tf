@@ -4,10 +4,10 @@
 #
 # No client secret is created — all auth is via OIDC federated credentials (DECISIONS.md ADR-0002).
 #
-# RBAC scope: Owner on the AVD subscription(s) — NOT the Tenant Root MG (platform/management groups
-# are out of scope). Owner is used because the application landing zone creates role assignments
-# (e.g. AVD/storage RBAC); scope-down to Contributor + User Access Administrator is tracked in
-# OPEN-QUESTIONS.md (OQ-007).
+# RBAC scope: Contributor + User Access Administrator on the AVD subscription(s) — NOT the Tenant Root
+# MG (platform/management groups are out of scope). Contributor manages resources; User Access
+# Administrator lets the application landing zone create role assignments (AVD/storage RBAC). Together
+# they replace Owner (least-privilege — DECISIONS.md ADR-0005, resolves OQ-007).
 
 data "azuread_client_config" "current" {}
 
@@ -68,14 +68,26 @@ resource "azuread_application_federated_identity_credential" "prod_environment" 
 }
 
 # ---------------------------------------------------------------------------
-# RBAC — Owner on the AVD subscription(s) (OQ-007 tracks scope-down)
+# RBAC — Contributor + User Access Administrator on the AVD subscription(s)
+# (least-privilege replacement for Owner — ADR-0005, resolves OQ-007).
 # ---------------------------------------------------------------------------
 
-resource "azurerm_role_assignment" "oidc_owner_subscription" {
+resource "azurerm_role_assignment" "oidc_contributor_subscription" {
   for_each = local.target_subscription_ids
 
   scope                            = "/subscriptions/${each.value}"
-  role_definition_name             = "Owner"
+  role_definition_name             = "Contributor"
+  principal_id                     = azuread_service_principal.oidc.object_id
+  skip_service_principal_aad_check = true
+}
+
+# User Access Administrator — the application landing zone creates role assignments (AVD/storage RBAC),
+# which Contributor cannot.
+resource "azurerm_role_assignment" "oidc_user_access_admin_subscription" {
+  for_each = local.target_subscription_ids
+
+  scope                            = "/subscriptions/${each.value}"
+  role_definition_name             = "User Access Administrator"
   principal_id                     = azuread_service_principal.oidc.object_id
   skip_service_principal_aad_check = true
 }
