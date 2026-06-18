@@ -49,6 +49,33 @@
 
 ## Sessions
 
+### Session 2026-06-14 (u) — Intune auto-enroll hook + enforced review gate
+
+**README restructure** (committed `95fda7e`): Mermaid architecture diagram, Configuration table, CI/CD +
+Teardown sections, Documentation table; dropped the "How it's built" narrative.
+
+**Intune integration (ADR-0006).** Scoped to the deployment-time **auto-enroll hook only** (Intune
+config/compliance + tenant MDM scope are control-plane, no AVM surface — separate Graph stack if needed).
+`var.intune_enrollment` (default false) → `mdmId` on the AADLoginForWindows extension
+(`modules/session-hosts/{variables,main}.tf`); threaded to root as `session_host_intune_enrollment`
+(`landing-zones/avd-workload/{variables,main}.tf`). ADR-0006 + README row added. **code-reviewer: APPROVE**
+(NITs: header date bumped). Mechanism verified vs current MS AVD docs. Both roots `validate` ✅.
+
+**Enforced review gate (process fix).** The reviewer/test gate had been skipped twice because it lived only
+as prose in `CLAUDE.md`. Replaced with hooks:
+- `.githooks/pre-commit` (enable via `git config core.hooksPath .githooks`) — hard-fails on
+  `terraform fmt -check` / `validate` errors.
+- `.claude/settings.json` `PreToolUse` hook (filtered to `git commit`) → `.claude/hooks/require-review.sh`
+  **blocks** commits unless `.claude/hooks/record-review.sh` stamped the current tree fingerprint
+  (`.claude/review-gate`, gitignored). Any post-approval edit invalidates the stamp. Override:
+  `REVIEW_GATE_OVERRIDE=1 git commit …` (logged, trivial commits only).
+- Documented in `docs/review-gate.md`. Gate behavior tested end-to-end (block/allow/override/staleness).
+
+**Suggested commits:** `feat(session-hosts): optional Intune auto-enrollment via AADLoginForWindows mdmId (ADR-0006)`
+then `chore(repo): enforce review+test gate via git pre-commit and Claude PreToolUse hooks`.
+
+---
+
 ### Session 2026-06-14 (t) — Resolve OQ-007 + OQ-008
 
 Closed the two remaining open questions in code + docs (both roots `terraform validate` ✅).
@@ -562,4 +589,3 @@ are **dropped** per ADR-0001. `infra/bicep/` is removed in Section 1. The pinned
 
 **AVM versions pinned:** see `docs/decisions/0001-iac-and-modules.md`.
 
-**Verification:** ⚠️ Unverified — no `az`/`bicep`/`terraform`/`pwsh`/`actionlint` in this environment.
