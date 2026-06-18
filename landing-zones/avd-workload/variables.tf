@@ -268,6 +268,12 @@ variable "session_host_encryption_at_host" {
   default     = true
 }
 
+variable "session_host_intune_enrollment" {
+  description = "Auto-enroll session hosts into Microsoft Intune during Entra join (ADR-0006). Requires tenant-side MDM auto-enrollment scope + Intune licensing; default off."
+  type        = bool
+  default     = false
+}
+
 # ---------------------------------------------------------------------------
 # Monitoring (Section 10)
 # ---------------------------------------------------------------------------

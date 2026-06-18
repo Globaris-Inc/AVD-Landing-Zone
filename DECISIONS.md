@@ -178,3 +178,44 @@ Implemented in `bootstrap/identity.tf` as `azurerm_role_assignment.oidc_contribu
   built-in roles are the standard, well-understood pairing for this need.
 
 > Supersedes ADR-0002 point 4 (Owner on the AVD subscription).
+
+---
+
+## ADR-0006 — Microsoft Intune integration: auto-enroll hook only (config plane out of scope)
+
+- **Status:** Accepted
+- **Date:** 2026-06-14
+- **Deciders:** Cloud Solutions Architect + Project owner
+
+### Context
+A requirement to manage AVD session hosts with **Microsoft Intune** (MDM). Intune management of session
+hosts is enabled by **Entra ID join**, which is already the baseline (ADR-0003). The question is how much
+of the Intune integration belongs in this **application** landing zone vs. the control plane.
+
+Intune itself has **no `azurerm`/AVM resource surface** — it is configured through Microsoft Graph
+(configuration profiles, compliance policies, app deployment, enrollment restrictions). The tenant-level
+**MDM auto-enrollment scope** (Entra ID → Mobility) and **Intune licensing** are tenant/platform concerns.
+
+### Decision
+Scope this repo to the **single deployment-time hook** that genuinely belongs with the session hosts:
+- `var.intune_enrollment` (default **false**) adds the well-known Intune MDM app ID
+  (`0000000a-0000-0000-c000-000000000000`) as `mdmId` on the `AADLoginForWindows` extension, triggering
+  auto-enrollment during Entra join. It has no effect unless `entra_id_join = true`.
+- Default **off**: enabling it without the tenant MDM scope + licensing in place causes the
+  `AADLoginForWindows` extension to fail, so enrollment is opt-in once prerequisites exist.
+
+**Out of scope (control plane):** the Entra MDM auto-enrollment scope, Intune licensing, and all Intune
+configuration/compliance/app policies. These are a separate **Intune-as-code** effort (Microsoft Graph /
+`microsoft365` provider / Microsoft365DSC), not part of this `azurerm`/AVM application landing zone.
+
+### Consequences
+- **Pro:** session hosts can auto-enroll with a single toggle; no scope creep into a Graph-based config
+  stack the AVM toolchain doesn't cover; safe default avoids extension failures.
+- **Con:** enabling Intune end-to-end still requires out-of-repo tenant configuration (documented as a
+  prerequisite); policy/compliance management lives in a separate stack to be defined if needed.
+
+### Alternatives considered
+- **Full Intune-as-code in this repo** — rejected: no AVM/`azurerm` coverage; belongs in a dedicated Graph
+  stack to avoid mixing provider ecosystems and ownership.
+- **Document only, no code** — rejected: the auto-enroll hook is small, host-local, and the natural place
+  for it is the session-host extension.

@@ -97,6 +97,12 @@ variable "entra_id_join" {
   default     = true
 }
 
+variable "intune_enrollment" {
+  description = "Auto-enroll session hosts into Microsoft Intune during Entra join (adds mdmId to the AADLoginForWindows extension). Requires entra_id_join = true plus tenant-side MDM auto-enrollment scope and Intune licensing; has no effect when entra_id_join = false."
+  type        = bool
+  default     = false
+}
+
 variable "encryption_at_host_enabled" {
   description = "Enable encryption at host. Requires the Microsoft.Compute/EncryptionAtHost feature registered on the subscription; set false if it isn't registered yet."
   type        = bool
