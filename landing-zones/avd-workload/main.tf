@@ -202,6 +202,7 @@ module "session_hosts" {
   host_pool_registration_token = module.management_plane.host_pool_registration_token
   entra_id_join                = local.identity.entra_id_join
   encryption_at_host_enabled   = var.session_host_encryption_at_host
+  intune_enrollment            = var.session_host_intune_enrollment
 }
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # Purpose: AVD session-host VMs + Entra ID join + AVD agent registration.
 # Section: PROMPT.md §9 — Session hosts
-# Last updated: 2026-06-11
+# Last updated: 2026-06-14
 #
 # AVM: avm-res-compute-virtualmachine 0.21.0 (for_each per host).
 #
@@ -12,8 +12,16 @@
 # NOTE: encryption_at_host_enabled is gated by var.encryption_at_host_enabled (default true) — the
 # subscription must have the Microsoft.Compute/EncryptionAtHost feature registered or set it false
 # (OQ-008).
+#
+# Intune: var.intune_enrollment (default false) auto-enrolls hosts into Microsoft Intune via the
+# AADLoginForWindows mdmId. The tenant-side MDM auto-enrollment scope + Intune licensing are
+# prerequisites (control plane, out of repo scope) — see DECISIONS.md ADR-0006.
 
 locals {
+  # Well-known Microsoft Intune MDM application ID — set as mdmId on the AADLoginForWindows extension to
+  # trigger Intune auto-enrollment during Entra join (gated by var.intune_enrollment).
+  intune_mdm_id = "0000000a-0000-0000-c000-000000000000"
+
   # One entry per session host, keyed by zero-padded index, spread across availability zones.
   session_hosts = {
     for i in range(var.session_host_count) :
@@ -34,8 +42,9 @@ locals {
         type                 = "AADLoginForWindows"
         type_handler_version = "2.0"
         deploy_sequence      = 1 # Entra join must complete before the agent DSC (sequence 2).
-        settings             = null
-        protected_settings   = null
+        # Optional Intune auto-enrollment: mdmId on the Entra-join extension (no effect unless set).
+        settings           = var.intune_enrollment ? jsonencode({ mdmId = local.intune_mdm_id }) : null
+        protected_settings = null
       }
     } : {},
     {
