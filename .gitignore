@@ -33,6 +33,8 @@ bootstrap/terraform.tfvars
 
 # ---- Claude Code (local-only) ----
 .claude/settings.local.json
+# Review-gate approval stamp — local session state, not shared.
+.claude/review-gate
 
 # ---- Editors / OS ----
 .vscode/*
