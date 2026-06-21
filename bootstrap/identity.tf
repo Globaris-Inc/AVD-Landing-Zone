@@ -8,6 +8,10 @@
 # MG (platform/management groups are out of scope). Contributor manages resources; User Access
 # Administrator lets the application landing zone create role assignments (AVD/storage RBAC). Together
 # they replace Owner (least-privilege — DECISIONS.md ADR-0005, resolves OQ-007).
+#
+# Toggle: when var.create_oidc_identity = false, the OIDC app/SP/federated-credentials and the
+# subscription RBAC below are skipped (reuse an existing app registration instead — wire its RBAC and
+# federated credentials separately). The deployer's state-account data-plane role is always created.
 
 data "azuread_client_config" "current" {}
 
@@ -24,12 +28,14 @@ locals {
 # ---------------------------------------------------------------------------
 
 resource "azuread_application" "oidc" {
+  count        = var.create_oidc_identity ? 1 : 0
   display_name = "sp-${var.workload}-lz-cicd"
   # No redirect URIs / implicit grants / API permissions — access is via ARM RBAC only.
 }
 
 resource "azuread_service_principal" "oidc" {
-  client_id                    = azuread_application.oidc.client_id
+  count                        = var.create_oidc_identity ? 1 : 0
+  client_id                    = azuread_application.oidc[0].client_id
   app_role_assignment_required = false
 }
 
@@ -39,7 +45,8 @@ resource "azuread_service_principal" "oidc" {
 
 # push to main -> apply workflow
 resource "azuread_application_federated_identity_credential" "main_branch" {
-  application_id = azuread_application.oidc.id
+  count          = var.create_oidc_identity ? 1 : 0
+  application_id = azuread_application.oidc[0].id
   display_name   = "github-main-branch"
   description    = "GitHub Actions OIDC — push to main (apply-on-merge)"
   audiences      = ["api://AzureADTokenExchange"]
@@ -49,7 +56,8 @@ resource "azuread_application_federated_identity_credential" "main_branch" {
 
 # pull_request events -> plan workflow
 resource "azuread_application_federated_identity_credential" "pull_request" {
-  application_id = azuread_application.oidc.id
+  count          = var.create_oidc_identity ? 1 : 0
+  application_id = azuread_application.oidc[0].id
   display_name   = "github-pull-request"
   description    = "GitHub Actions OIDC — pull_request events (plan-on-pr)"
   audiences      = ["api://AzureADTokenExchange"]
@@ -59,7 +67,8 @@ resource "azuread_application_federated_identity_credential" "pull_request" {
 
 # GitHub Environment-gated apply (Settings -> Environments -> "production").
 resource "azuread_application_federated_identity_credential" "prod_environment" {
-  application_id = azuread_application.oidc.id
+  count          = var.create_oidc_identity ? 1 : 0
+  application_id = azuread_application.oidc[0].id
   display_name   = "github-env-production"
   description    = "GitHub Actions OIDC — production environment (gated apply)"
   audiences      = ["api://AzureADTokenExchange"]
@@ -73,40 +82,36 @@ resource "azuread_application_federated_identity_credential" "prod_environment" 
 # ---------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "oidc_contributor_subscription" {
-  for_each = local.target_subscription_ids
+  for_each = var.create_oidc_identity ? local.target_subscription_ids : toset([])
 
   scope                            = "/subscriptions/${each.value}"
   role_definition_name             = "Contributor"
-  principal_id                     = azuread_service_principal.oidc.object_id
+  principal_id                     = azuread_service_principal.oidc[0].object_id
   skip_service_principal_aad_check = true
 }
 
 # User Access Administrator — the application landing zone creates role assignments (AVD/storage RBAC),
 # which Contributor cannot.
 resource "azurerm_role_assignment" "oidc_user_access_admin_subscription" {
-  for_each = local.target_subscription_ids
+  for_each = var.create_oidc_identity ? local.target_subscription_ids : toset([])
 
   scope                            = "/subscriptions/${each.value}"
   role_definition_name             = "User Access Administrator"
-  principal_id                     = azuread_service_principal.oidc.object_id
+  principal_id                     = azuread_service_principal.oidc[0].object_id
   skip_service_principal_aad_check = true
 }
 
 # ---------------------------------------------------------------------------
-# RBAC — Storage data plane on the state account (control-plane Owner does not
-# grant blob data access when shared keys are disabled).
+# RBAC — Storage data plane on the state account for the CI principal (only when creating a NEW OIDC
+# identity; control-plane Contributor does not grant blob data access when shared keys are disabled).
+# When reusing an existing app reg (create_oidc_identity = false), the deployer role in main.tf already
+# covers it because the deployer IS that same service principal.
 # ---------------------------------------------------------------------------
 
 resource "azurerm_role_assignment" "oidc_storage_blob_contributor" {
+  count                            = var.create_oidc_identity ? 1 : 0
   scope                            = azurerm_storage_account.tfstate.id
   role_definition_name             = "Storage Blob Data Contributor"
-  principal_id                     = azuread_service_principal.oidc.object_id
+  principal_id                     = azuread_service_principal.oidc[0].object_id
   skip_service_principal_aad_check = true
-}
-
-# Deployer needs the same data-plane role to run local terraform against the remote state.
-resource "azurerm_role_assignment" "deployer_storage_blob_contributor" {
-  scope                = azurerm_storage_account.tfstate.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = data.azurerm_client_config.current.object_id
 }

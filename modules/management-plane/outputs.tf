@@ -19,7 +19,7 @@ output "application_group_resource_id" {
 
 output "workspace_resource_id" {
   description = "Resource ID of the AVD workspace."
-  value       = module.workspace.resource_id
+  value       = module.workspace.resource_id.id # AVM workspace 0.2.2 resource_id output is the whole object
 }
 
 output "host_pool_registration_token" {

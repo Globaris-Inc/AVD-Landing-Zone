@@ -8,8 +8,14 @@ variable "tenant_id" {
 }
 
 variable "subscription_id" {
-  description = "AVD workload subscription ID. The state backend (RG, Key Vault, Storage Account) is created here, and the CI principal is granted Owner on it."
+  description = "AVD workload subscription ID. The state backend (RG, Key Vault, Storage Account) is created here, and (when create_oidc_identity = true) the CI principal is granted Contributor + User Access Administrator on it."
   type        = string
+}
+
+variable "create_oidc_identity" {
+  description = "Create a new OIDC app registration + service principal + federated credentials + subscription RBAC for GitHub Actions CI. Set false to reuse an existing app registration (then wire its RBAC/federated credentials separately) — bootstrap becomes state-backend-only."
+  type        = bool
+  default     = true
 }
 
 variable "shared_services_subscription_id" {
@@ -36,13 +42,15 @@ variable "primary_location" {
 }
 
 variable "github_org" {
-  description = "GitHub organisation or user that owns the repository. Used to build the OIDC federated-credential subjects."
+  description = "GitHub organisation or user that owns the repository. Used to build the OIDC federated-credential subjects. Required only when create_oidc_identity = true."
   type        = string
+  default     = ""
 }
 
 variable "github_repo" {
-  description = "GitHub repository name (without the org prefix). Used to build the OIDC federated-credential subjects."
+  description = "GitHub repository name (without the org prefix). Used to build the OIDC federated-credential subjects. Required only when create_oidc_identity = true."
   type        = string
+  default     = ""
 }
 
 variable "ip_allow_list" {

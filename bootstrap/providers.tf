@@ -36,6 +36,10 @@ terraform {
 provider "azurerm" {
   subscription_id = var.subscription_id
 
+  # The state Storage Account disables shared keys (Entra-ID/RBAC only). Without this the provider
+  # falls back to shared-key auth for the blob data plane and fails with KeyBasedAuthenticationNotPermitted.
+  storage_use_azuread = true
+
   features {
     key_vault {
       # Never auto-purge on destroy — purge protection is enabled on the bootstrap KV.

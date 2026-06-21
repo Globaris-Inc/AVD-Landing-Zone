@@ -62,3 +62,9 @@ variable "firewall_private_ip" {
   type        = string
   default     = ""
 }
+
+variable "enable_nat_gateway" {
+  description = "Create a NAT gateway for outbound internet from the session-host subnet. Required when egress is not provided by a hub firewall — Azure's implicit default outbound access is being retired, so session hosts otherwise cannot reach the AVD control plane / agent artifacts. Set false when firewall_private_ip routes egress instead."
+  type        = bool
+  default     = true
+}

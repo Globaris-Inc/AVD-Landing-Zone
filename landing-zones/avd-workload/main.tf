@@ -198,6 +198,7 @@ module "session_hosts" {
   admin_username               = var.session_host_admin_username
   subnet_resource_id           = local.networking.session_host_subnet_resource_id
   asg_resource_id              = local.networking.session_host_asg_resource_id
+  enable_asg_association       = true # session hosts only deploy with networking, so the ASG always exists
   host_pool_name               = module.management_plane.host_pool_name
   host_pool_registration_token = module.management_plane.host_pool_registration_token
   entra_id_join                = local.identity.entra_id_join
@@ -219,10 +220,18 @@ module "monitoring" {
   retention_in_days          = var.log_retention_in_days
 }
 
+locals {
+  # The single session-hosts instance (or null when not deployed). Mirrors the local.networking pattern.
+  # Used instead of try(module.session_hosts["this"]...) — try() over a map whose VALUES are unknown at
+  # plan makes the whole result (keys included) unknown, which breaks the for_each below on greenfield.
+  session_hosts_instance = one(values(module.session_hosts))
+}
+
 # Associate the AVD data collection rule with each session host (the AMA extension on the VMs
-# collects the configured perf counters + events into the workspace for AVD Insights).
+# collects the configured perf counters + events into the workspace for AVD Insights). The map keys
+# (host indices) are static, so for_each plans cleanly even though the VM resource ids are not yet known.
 resource "azurerm_monitor_data_collection_rule_association" "session_hosts" {
-  for_each = try(module.session_hosts["this"].session_host_resource_ids, {})
+  for_each = local.session_hosts_instance == null ? {} : local.session_hosts_instance.session_host_resource_ids
 
   name                    = "dcra-${each.key}"
   target_resource_id      = each.value

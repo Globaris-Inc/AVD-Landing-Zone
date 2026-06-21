@@ -72,6 +72,39 @@ module "nsg" {
 }
 
 # ---------------------------------------------------------------------------
+# NAT Gateway — explicit outbound internet for the session-host subnet.
+# Azure's implicit "default outbound access" is being retired and is unavailable for new deployments,
+# so session hosts need a defined egress path to download the AVD agent artifacts and reach the AVD
+# control plane / Entra. DEVIATION: native azurerm (single-resource need; mirrors the private-DNS-zone
+# deviation, ADR-0004). Disable via enable_nat_gateway when a hub firewall provides egress.
+# ---------------------------------------------------------------------------
+resource "azurerm_public_ip" "nat" {
+  count               = var.enable_nat_gateway ? 1 : 0
+  name                = "pip-nat-${var.name_prefix}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = var.tags
+}
+
+resource "azurerm_nat_gateway" "this" {
+  count                   = var.enable_nat_gateway ? 1 : 0
+  name                    = "natgw-${var.name_prefix}"
+  location                = var.location
+  resource_group_name     = var.resource_group_name
+  sku_name                = "Standard"
+  idle_timeout_in_minutes = 4
+  tags                    = var.tags
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "this" {
+  count                = var.enable_nat_gateway ? 1 : 0
+  nat_gateway_id       = azurerm_nat_gateway.this[0].id
+  public_ip_address_id = azurerm_public_ip.nat[0].id
+}
+
+# ---------------------------------------------------------------------------
 # Application Security Group — for session-host NICs
 # ---------------------------------------------------------------------------
 module "asg" {
@@ -122,6 +155,8 @@ module "vnet" {
       route_table = {
         id = module.route_table.resource_id
       }
+      # Outbound internet via the NAT gateway (when enabled) — default outbound access is retired.
+      nat_gateway = var.enable_nat_gateway ? { id = azurerm_nat_gateway.this[0].id } : null
     }
     private_endpoints = {
       name             = "snet-privateendpoints"

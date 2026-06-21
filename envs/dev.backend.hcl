@@ -4,10 +4,10 @@
 # Populate the <…> values from the `bootstrap` outputs after the one-time apply.
 # No secrets here — auth is via Entra ID / OIDC (use_azuread_auth = true).
 
-resource_group_name  = "<TFSTATE_RG_NAME>"     # bootstrap output: resource_group_name
-storage_account_name = "<TFSTATE_SA_NAME>"     # bootstrap output: storage_account_name
+resource_group_name  = "rg-tfstate-avd-001"    # bootstrap output: resource_group_name
+storage_account_name = "sttfstatetd8ci5"       # bootstrap output: storage_account_name
 container_name       = "tfstate"               # bootstrap output: storage_container_name
 key                  = "avd/dev.terraform.tfstate"
 use_azuread_auth     = true
-subscription_id      = "<AVD_WORKLOAD_SUB_ID>"
-tenant_id            = "<TENANT_ID>"
+# subscription_id / tenant_id intentionally omitted — supplied via ARM_SUBSCRIPTION_ID / ARM_TENANT_ID
+# (local SP env or GitHub Actions repo variables), so no IDs are committed to the repo.

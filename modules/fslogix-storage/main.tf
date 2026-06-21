@@ -7,14 +7,15 @@
 locals {
   # AVM storage uses the v2 diagnostic interface — `logs`/`metrics` default to EMPTY (unlike the v1
   # interface used by KV/automation), so categories must be set explicitly or nothing is collected.
-  diag_account = var.log_analytics_workspace_resource_id == "" ? {} : {
+  # Static keys so for_each keys are known at plan even when the workspace id isn't yet (greenfield).
+  diag_account = {
     to_law = {
       name                  = "diag-to-law"
       workspace_resource_id = var.log_analytics_workspace_resource_id
       metrics               = [{ category = "AllMetrics" }] # account level exposes metrics only
     }
   }
-  diag_file = var.log_analytics_workspace_resource_id == "" ? {} : {
+  diag_file = {
     to_law = {
       name                  = "diag-to-law"
       workspace_resource_id = var.log_analytics_workspace_resource_id

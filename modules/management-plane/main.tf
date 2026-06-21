@@ -11,8 +11,10 @@ locals {
   load_balancer_type       = var.host_pool_type == "Personal" ? "Persistent" : "BreadthFirst"
   preferred_app_group_type = var.app_group_type == "RemoteApp" ? "RailApplications" : "Desktop"
 
-  # Diagnostic settings → Log Analytics (§10). Empty LAW id disables diagnostics.
-  diagnostic_settings = var.log_analytics_workspace_resource_id == "" ? {} : {
+  # Diagnostic settings → Log Analytics (§10, always deployed in this composition). The key is static so
+  # for_each keys are known at plan even on a greenfield apply where the workspace id isn't known yet
+  # (Terraform allows unknown values in for_each, but not unknown keys).
+  diagnostic_settings = {
     to_law = {
       name                  = "diag-to-law"
       workspace_resource_id = var.log_analytics_workspace_resource_id
@@ -63,8 +65,10 @@ module "workspace" {
 }
 
 # DEVIATION: native azurerm — the AVM workspace module exposes no application-group association input.
+# NOTE: avm-res-desktopvirtualization-workspace 0.2.2's `resource_id` output returns the whole resource
+# object (not the id string, unlike the host_pool module) — hence `.resource_id.id`.
 resource "azurerm_virtual_desktop_workspace_application_group_association" "this" {
-  workspace_id         = module.workspace.resource_id
+  workspace_id         = module.workspace.resource_id.id
   application_group_id = module.application_group.resource_id
 }
 

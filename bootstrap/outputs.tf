@@ -36,8 +36,8 @@ output "key_vault_id" {
 # ---------------------------------------------------------------------------
 
 output "oidc_client_id" {
-  description = "Application (client) ID of the OIDC app registration. -> GitHub repo variable AZURE_CLIENT_ID"
-  value       = azuread_application.oidc.client_id
+  description = "Application (client) ID of the OIDC app registration (null when create_oidc_identity = false). -> GitHub repo variable AZURE_CLIENT_ID"
+  value       = one(azuread_application.oidc[*].client_id)
 }
 
 output "oidc_tenant_id" {
@@ -46,8 +46,8 @@ output "oidc_tenant_id" {
 }
 
 output "oidc_sp_object_id" {
-  description = "Object ID of the OIDC service principal (useful for auditing role assignments)."
-  value       = azuread_service_principal.oidc.object_id
+  description = "Object ID of the OIDC service principal (null when create_oidc_identity = false; useful for auditing role assignments)."
+  value       = one(azuread_service_principal.oidc[*].object_id)
 }
 
 output "subscription_id" {

@@ -47,9 +47,15 @@ variable "subnet_resource_id" {
 }
 
 variable "asg_resource_id" {
-  description = "Optional application security group resource ID to associate with session-host NICs. Empty skips it."
+  description = "Application security group resource ID to associate with session-host NICs (used when enable_asg_association = true)."
   type        = string
   default     = ""
+}
+
+variable "enable_asg_association" {
+  description = "Associate session-host NICs with var.asg_resource_id. Gated on a static bool (not the asg id) so plan works on a greenfield apply where the id isn't known yet."
+  type        = bool
+  default     = false
 }
 
 variable "image_reference" {
@@ -110,7 +116,7 @@ variable "encryption_at_host_enabled" {
 }
 
 variable "avd_agent_dsc_modules_url" {
-  description = "URL of the AVD agent DSC configuration package. Default is Microsoft's always-latest Configuration.zip; pin a versioned Configuration_x.y.z.zip for reproducible builds."
+  description = "URL of the AVD agent DSC configuration package. Pinned to a versioned package whose AddSessionHost accepts the aadJoin parameter — the unversioned 'always-latest' Configuration.zip dropped aadJoin and fails on Entra-join host pools (RDS-Templates issue #598). The AVD agent self-updates after registration, so the bootstrap package version mainly affects the registration step."
   type        = string
-  default     = "https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/Configuration.zip"
+  default     = "https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/Configuration_1.0.02627.270.zip"
 }
