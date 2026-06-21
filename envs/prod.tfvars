@@ -1,15 +1,17 @@
 # Variable values for the prod environment (AVD workload composition root).
 # Usage: terraform plan -var-file=../../envs/prod.tfvars
-# Replace every <…> placeholder. Supply the real subscription ID via your local copy / CI variables.
+# Subscription/tenant IDs are NOT set here — supplied via TF_VAR_* / CI variables (see note below).
 
-subscription_id = "<AVD_WORKLOAD_SUB_ID>"
-location        = "eastus2"
-location_short  = "eus2"
-environment     = "prod"
-workload        = "avd"
+# subscription_id / tenant_id are NOT set here — supplied via TF_VAR_subscription_id / TF_VAR_tenant_id
+# (local SP env or GitHub Actions repo variables). -var-file outranks TF_VAR_*, so they must be omitted
+# here for the env values to take effect (and to keep IDs out of the repo).
+location       = "centralus"
+location_short = "cus"
+environment    = "prod"
+workload       = "avd"
 
-owner               = "<TEAM_OR_DRI_EMAIL>"
-cost_center         = "<COST_CENTER>"
+owner               = "avd-poc-team"
+cost_center         = "avd-poc"
 criticality         = "high"
 data_classification = "confidential"
 
@@ -34,7 +36,7 @@ fslogix_share_quota_gb           = 128
 fslogix_account_replication_type = "ZRS"
 
 # --- Security (Section 7) ---
-tenant_id     = "<TENANT_ID>"
+# tenant_id supplied via TF_VAR_tenant_id (see note at top).
 key_vault_sku = "standard"
 
 # --- Management plane (Section 8) ---
@@ -42,5 +44,7 @@ host_pool_type       = "Pooled"
 max_sessions_allowed = 8
 
 # --- Session hosts (Section 9) ---
+# D4as_v4: this subscription has 0 Dasv5 quota; Dasv4 has quota (Total Regional vCPUs = 10, so destroy
+# dev before applying prod). Raise quota / change size for a real prod sub.
 session_host_count   = 2
-session_host_vm_size = "Standard_D4as_v5"
+session_host_vm_size = "Standard_D4as_v4"
