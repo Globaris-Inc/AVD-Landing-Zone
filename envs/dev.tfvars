@@ -3,14 +3,16 @@
 # Replace every <…> placeholder. No secrets here — subscription ID is not secret, but per project
 # rules use a placeholder in the repo and supply the real value via your local copy / CI variables.
 
-subscription_id = "<AVD_WORKLOAD_SUB_ID>"
-location        = "eastus2"
-location_short  = "eus2"
-environment     = "dev"
-workload        = "avd"
+# subscription_id and tenant_id are intentionally NOT set here — they are supplied via TF_VAR_subscription_id
+# / TF_VAR_tenant_id (local SP env or GitHub Actions repo variables). Note -var-file outranks TF_VAR_*, so
+# leaving them out of this file is required for the env values to take effect (and keeps IDs out of the repo).
+location       = "centralus"
+location_short = "cus"
+environment    = "dev"
+workload       = "avd"
 
-owner               = "<TEAM_OR_DRI_EMAIL>"
-cost_center         = "<COST_CENTER>"
+owner               = "avd-poc-team"
+cost_center         = "avd-poc"
 criticality         = "medium"
 data_classification = "confidential"
 
@@ -35,7 +37,7 @@ fslogix_share_quota_gb           = 128
 fslogix_account_replication_type = "ZRS"
 
 # --- Security (Section 7) ---
-tenant_id     = "<TENANT_ID>"
+# tenant_id supplied via TF_VAR_tenant_id (see note at top).
 key_vault_sku = "standard"
 
 # --- Management plane (Section 8) ---
@@ -43,5 +45,7 @@ host_pool_type       = "Pooled"
 max_sessions_allowed = 8
 
 # --- Session hosts (Section 9) ---
+# NOTE: Standard_D4as_v5 hit a 0-quota wall on this PoC sub; Dasv4 has quota (Total Regional vCPUs = 10).
+# D4as_v4 = 4 cores, supports encryption-at-host. 2 hosts = 8 cores, within the regional cap.
 session_host_count   = 2
-session_host_vm_size = "Standard_D4as_v5"
+session_host_vm_size = "Standard_D4as_v4"

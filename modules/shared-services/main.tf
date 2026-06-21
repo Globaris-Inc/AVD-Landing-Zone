@@ -25,7 +25,8 @@ module "automation_account" {
   sku                 = var.automation_sku
   tags                = var.tags
 
-  diagnostic_settings = var.log_analytics_workspace_resource_id == "" ? {} : {
+  # Static key so for_each keys are known at plan even when the workspace id isn't yet (greenfield).
+  diagnostic_settings = {
     to_law = {
       name                  = "diag-to-law"
       workspace_resource_id = var.log_analytics_workspace_resource_id

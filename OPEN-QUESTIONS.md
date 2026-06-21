@@ -23,6 +23,14 @@ always-latest `galleryartifacts/Configuration.zip` via `var.avd_agent_dsc_module
 `Configuration_x.y.z.zip` there for reproducible builds); the `# UNVERIFIED` marker is replaced with a
 dated note. See `modules/session-hosts/{main,variables}.tf`.
 
+**Update (2026-06-20, post-deploy):** the "always-latest" `Configuration.zip` was **reversed** — the
+unversioned/native package dropped the `aadJoin` parameter and the DSC extension fails on Entra-join host
+pools (`A parameter cannot be found that matches parameter name 'aadJoin'`, RDS-Templates #598). The
+default is now pinned to `Configuration_1.0.02627.270.zip` (accepts aadJoin; the AVD agent self-updates
+after registration). Both prerequisites were actioned on the subscription during the first live apply:
+EncryptionAtHost registered, and the Azure Virtual Desktop SP granted **Desktop Virtualization Power On
+Off Contributor** (required by the scaling plan). All verified by a successful deployment.
+
 ### OQ-007 — Scope down the CI principal from Owner? → **Contributor + User Access Administrator**
 **Resolution (2026-06-14):** Reduced from **Owner** to **Contributor + User Access Administrator** at
 subscription scope (least-privilege). Contributor manages resources; User Access Administrator lets the

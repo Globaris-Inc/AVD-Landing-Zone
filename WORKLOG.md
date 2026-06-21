@@ -49,6 +49,48 @@
 
 ## Sessions
 
+### Session 2026-06-20 (v) — FIRST LIVE DEPLOYMENT to Azure (sub-avd-poc-01 / centralus)
+
+Deployed the whole landing zone for real (deployer = existing GitHub app reg **GitHubActionsApp** via SP
+client-secret env auth; the tenant enforces MFA on user ARM access, which OIDC/federation can't satisfy
+for a local run). **Result: 97-resource AVD workload live; both session hosts `Available` in the host
+pool.** The live apply shook out a series of issues invisible to `terraform validate` — all fixed:
+
+**Bootstrap (state backend):**
+- `create_oidc_identity` toggle (default true) added so we reuse the existing app reg instead of creating
+  one (identity.tf/variables.tf/outputs.tf). The deployer (= that SP) gets a **RG-scoped** Storage Blob
+  Data Contributor role + 60s propagation so the keys-disabled SA's blob poll works.
+- `storage_use_azuread = true` on the provider (else `KeyBasedAuthenticationNotPermitted`).
+- Storage `ip_rules` strip `/32` (Storage rejects /32 like KV does) — `local.ip_rules` used for both.
+- Removed the **WORM immutability policy** on the state container — it blocks Terraform's per-apply state
+  overwrites/locks (`BlobImmutableDueToPolicy`); versioning provides recovery instead.
+- `ignore_changes = [customer_managed_key]` on the state SA (separate-CMK-resource flip-flop).
+
+**Workload (greenfield plan/apply fixes):**
+- `for_each` over apply-time-unknown values → **static keys**: diagnostic_settings in management-plane,
+  security, shared-services, fslogix (×2); the DCR-association now uses `one(values(...))` not `try()`.
+- `workspace_id = module.workspace.resource_id.id` (AVM workspace 0.2.2 `resource_id` is the whole object).
+- Session-host ASG association gated on a static `enable_asg_association` bool, not the unknown ASG id.
+- **NAT Gateway** added to the networking module (`enable_nat_gateway`, default true) — Azure default
+  outbound access is retired, so session hosts had no egress to download the agent / reach the control plane.
+- `envs/dev.tfvars`: region → **centralus**; removed `subscription_id`/`tenant_id` (—var-file outranks
+  TF_VAR_*, so they must come from env only); VM size `Standard_D4as_v5` → `D4as_v4` (sub had 0 Dasv5 quota).
+- `envs/dev.backend.hcl`: filled RG/SA/container from bootstrap outputs; omitted sub/tenant IDs.
+
+**Operational prerequisites actioned on the subscription (not code):**
+- Registered `Microsoft.Compute/EncryptionAtHost` + `az provider register Microsoft.Compute` (OQ-008).
+- Granted the **Azure Virtual Desktop** first-party SP **Desktop Virtualization Power On Off Contributor**
+  (required for the scaling plan).
+
+**OQ-008b reversed:** the unversioned "always-latest" `Configuration.zip` **dropped the `aadJoin`
+parameter** and fails on Entra-join host pools (RDS-Templates #598). Pinned
+`avd_agent_dsc_modules_url` to `Configuration_1.0.02627.270.zip` (accepts aadJoin; agent self-updates after
+registration — live hosts show agent 1.0.14506.600).
+
+**Suggested commit:** `fix(deploy): make the landing zone deployable on greenfield — storage_use_azuread, NAT egress, static for_each keys, pinned DSC artifact, reuse-app bootstrap toggle (first live apply)`
+
+---
+
 ### Session 2026-06-14 (u) — Intune auto-enroll hook + enforced review gate
 
 **README restructure** (committed `95fda7e`): Mermaid architecture diagram, Configuration table, CI/CD +

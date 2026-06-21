@@ -126,7 +126,9 @@ module "session_host" {
           private_ip_subnet_resource_id = var.subnet_resource_id
         }
       }
-      application_security_groups = var.asg_resource_id != "" ? {
+      # Gate on a static bool (known at plan), not the asg id string which is unknown on a greenfield
+      # apply — otherwise the AVM module's NIC↔ASG association for_each gets unknown keys and fails.
+      application_security_groups = var.enable_asg_association ? {
         asg = { application_security_group_resource_id = var.asg_resource_id }
       } : {}
     }
