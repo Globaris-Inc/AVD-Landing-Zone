@@ -120,7 +120,11 @@ Common knobs in `envs/*.tfvars` (full list: [`landing-zones/avd-workload/variabl
 - **`plan-on-pr.yml`** — `terraform fmt` + `validate` + `plan` (dev) on every pull request. No apply.
 - **`apply-on-merge.yml`** — `terraform apply` (prod) on merge to `main`, gated behind the `production`
   GitHub Environment (required reviewer).
-- Auth is **OIDC federated** (`azure/login`); pinned action SHAs; no long-lived secrets. The federated
+- **`manual-deploy.yml`** — on-demand `workflow_dispatch` for **plan / apply / destroy** against a chosen
+  environment (dev|prod). apply/destroy require typing the environment name to confirm; prod apply/destroy
+  run under the `production` Environment gate. Use this for manual deploys and the destroy-dev-before-prod
+  step.
+- Auth is **OIDC federated** (`azure/login`); pinned action versions; no long-lived secrets. The federated
   credentials are created by `bootstrap/`.
 
 ## Before the first apply
