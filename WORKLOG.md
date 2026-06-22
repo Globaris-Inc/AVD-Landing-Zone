@@ -49,6 +49,27 @@
 
 ## Sessions
 
+### Session 2026-06-21 (w) — Manual-deploy workflow + remove apply-on-merge; prod env configured
+
+Post-deploy CI/operational changes (all committed + pushed to origin/main; reviewer-gated):
+- **dev destroyed** (freed the 10-vCPU regional quota); bootstrap state backend retained. Teardown hit
+  two AVD gotchas — autoscale had deallocated the hosts (extensions can't delete while stopped → started
+  them) and orphaned sessionHost objects blocked host-pool delete (force-deleted via REST). Noted for the
+  manual-deploy destroy caveat.
+- **prod env files configured** to match the reviewed dev fixes (`envs/prod.{tfvars,backend.hcl}`):
+  centralus, `D4as_v4`, IDs via env (not file), backend at the existing state account with key
+  `avd/prod.terraform.tfstate`. Plan-validated against the prod backend (**100 to add**). Commit `23d5805`.
+- **`manual-deploy.yml`** added (commit `8315f99`): `workflow_dispatch`, env (dev|prod) + action
+  (plan|apply|destroy); typed-confirmation for apply/destroy; prod apply/destroy gated by the `production`
+  Environment; inputs via env vars (no shell injection); `terraform validate` gate before apply/destroy.
+- **`apply-on-merge.yml` removed** (ADR-0007): deploys are now explicit via manual-deploy only — merges no
+  longer auto-apply prod (matches the destroy-first cadence; stops routine pushes triggering prod). Docs
+  updated (README, bootstrap/README, identity.tf fed-cred comment). The 3 federated creds are unchanged.
+
+**Suggested commit:** `refactor(ci): remove apply-on-merge — deploys are explicit via manual-deploy (ADR-0007)`
+
+---
+
 ### Session 2026-06-20 (v) — FIRST LIVE DEPLOYMENT to Azure (sub-avd-poc-01 / centralus)
 
 Deployed the whole landing zone for real (deployer = existing GitHub app reg **GitHubActionsApp** via SP

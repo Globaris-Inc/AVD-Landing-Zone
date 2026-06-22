@@ -43,12 +43,12 @@ resource "azuread_service_principal" "oidc" {
 # Federated identity credentials (OIDC — no client_secret)
 # ---------------------------------------------------------------------------
 
-# push to main -> apply workflow
+# main ref — used by manual-deploy.yml (workflow_dispatch) for dev actions and all plans
 resource "azuread_application_federated_identity_credential" "main_branch" {
   count          = var.create_oidc_identity ? 1 : 0
   application_id = azuread_application.oidc[0].id
   display_name   = "github-main-branch"
-  description    = "GitHub Actions OIDC — push to main (apply-on-merge)"
+  description    = "GitHub Actions OIDC — main ref (manual-deploy: dev actions + all plans)"
   audiences      = ["api://AzureADTokenExchange"]
   issuer         = "https://token.actions.githubusercontent.com"
   subject        = "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main"
