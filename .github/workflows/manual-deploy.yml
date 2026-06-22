@@ -1,0 +1,118 @@
+# manual-deploy.yml — on-demand AVD plan/apply/destroy from the Actions UI (workflow_dispatch).
+# Section: PROMPT.md §12 — CI/CD (GitHub Actions, OIDC)
+#
+# Pick environment (dev|prod) and action (plan|apply|destroy). Auth is OIDC — no secrets — same as the
+# PR/merge workflows. Safety controls:
+#   - apply/destroy require typing the environment name into the `confirm` input (typed confirmation).
+#   - prod apply/destroy run under the `production` GitHub Environment (required reviewer). Plan, and all
+#     dev actions, run without an environment. Both OIDC subjects (`:environment:production` and
+#     `:ref:refs/heads/main`) match federated credentials created in bootstrap/identity.tf.
+#
+# NOTE: run this from the default branch (main) so the OIDC ref subject matches the federated credential.
+# NOTE: AVD teardown caveat — autoscale can deallocate session hosts (extensions can't be removed while a
+#       VM is stopped) and leave orphaned sessionHost objects in the host pool, so a `destroy` may need a
+#       re-run after the hosts are started / sessionHosts cleared (see WORKLOG 2026-06-20). A robust
+#       pre-destroy helper is a planned follow-up.
+
+name: manual-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        options: [dev, prod]
+        required: true
+      action:
+        description: "Terraform action"
+        type: choice
+        options: [plan, apply, destroy]
+        default: plan
+        required: true
+      confirm:
+        description: "For apply/destroy: type the environment name (dev/prod) to confirm. Ignored for plan."
+        type: string
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+
+# One in-flight run per environment; never cancel an in-flight apply/destroy (avoid half-applied state).
+concurrency:
+  group: manual-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    name: terraform ${{ inputs.action }} (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+
+    # Gate prod apply/destroy behind the production Environment (required reviewer). Plan and all dev
+    # actions run with no environment → OIDC subject is the main ref, matched by the github-main-branch
+    # federated credential.
+    environment: ${{ (inputs.environment == 'prod' && inputs.action != 'plan') && 'production' || '' }}
+
+    defaults:
+      run:
+        working-directory: landing-zones/avd-workload
+
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+      TF_IN_AUTOMATION: "true"
+      # Inputs surfaced as env vars (never interpolate ${{ inputs.* }} directly into run scripts — that is
+      # a script-injection vector). environment/action are choice inputs, so values are constrained.
+      TF_ENV: ${{ inputs.environment }}
+      TF_ACTION: ${{ inputs.action }}
+      TF_CONFIRM: ${{ inputs.confirm }}
+
+    steps:
+      - name: Confirm destructive action
+        if: ${{ inputs.action != 'plan' }}
+        run: |
+          if [ "$TF_CONFIRM" != "$TF_ENV" ]; then
+            echo "::error::confirm ('$TF_CONFIRM') must equal the environment ('$TF_ENV') to run $TF_ACTION."
+            exit 1
+          fi
+          echo "Confirmed: $TF_ACTION on $TF_ENV."
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform init
+        run: terraform init -backend-config="../../envs/${TF_ENV}.backend.hcl" -input=false
+
+      # Cheap static gate before any apply/destroy — manual runs skip the PR plan gate.
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        if: ${{ inputs.action == 'plan' }}
+        run: terraform plan -var-file="../../envs/${TF_ENV}.tfvars" -input=false -no-color
+
+      - name: Terraform apply
+        if: ${{ inputs.action == 'apply' }}
+        run: terraform apply -auto-approve -var-file="../../envs/${TF_ENV}.tfvars" -input=false -no-color
+
+      - name: Terraform destroy
+        if: ${{ inputs.action == 'destroy' }}
+        run: terraform destroy -auto-approve -var-file="../../envs/${TF_ENV}.tfvars" -input=false -no-color
