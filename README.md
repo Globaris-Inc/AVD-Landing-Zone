@@ -124,6 +124,10 @@ Common knobs in `envs/*.tfvars` (full list: [`landing-zones/avd-workload/variabl
   confirm; prod apply/destroy run under the `production` Environment gate (required reviewer). Use this for
   all deploys and the destroy-dev-before-prod step. (There is intentionally **no merge-triggered apply** —
   every deploy is an explicit, confirmed action.)
+- **`cleanup-demo.yml`** — DESTRUCTIVE demo reset (`workflow_dispatch`). Brute-force `az group delete` of
+  the project RGs (`rg-avd-*`), with an `include_state_backend` toggle for `rg-tfstate-avd-001`. Guarded by
+  typing the subscription ID to confirm + the `production` Environment gate. Use to wipe the demo sub
+  between runs.
 - Auth is **OIDC federated** (`azure/login`); pinned action versions; no long-lived secrets. The federated
   credentials are created by `bootstrap/`.
 

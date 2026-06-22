@@ -1,0 +1,93 @@
+# cleanup-demo.yml — DESTRUCTIVE demo reset: delete the project's resource groups (and optionally the
+# Terraform state backend) in the subscription. Brute-force `az group delete` — NOT Terraform — so it also
+# removes orphans/manually-created demo resources and sidesteps AVD teardown ordering (stopped VMs /
+# orphaned sessionHosts that block `terraform destroy`).
+# Section: PROMPT.md §12 — CI/CD (GitHub Actions, OIDC)
+#
+# GUARDRAILS (all required):
+#   - workflow_dispatch only (never automatic).
+#   - You must TYPE the target subscription ID; the job aborts unless it matches AZURE_SUBSCRIPTION_ID.
+#   - Runs under the `production` GitHub Environment (required-reviewer gate) — a human approves every run.
+#
+# SCOPE: deletes resource groups named `rg-avd-*` (workload + shared, dev/prod). Azure-managed
+#   `NetworkWatcherRG` is never touched. `include_state_backend = true` ALSO deletes `rg-tfstate-avd-001`
+#   (you must re-run bootstrap afterward; its purge-protected Key Vault lingers soft-deleted).
+#
+# NOTE: this deletes resources OUTSIDE Terraform, so any remote state left behind goes stale — a later
+#   `plan` will show the resources as needing re-creation (or empty/replace the state blob for a clean
+#   slate). When include_state_backend = true the state blobs go away with the account.
+
+name: cleanup-demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_subscription_id:
+        description: "Type the target subscription ID to confirm. Aborts unless it matches AZURE_SUBSCRIPTION_ID."
+        type: string
+        required: true
+      include_state_backend:
+        description: "Also delete the Terraform state backend (rg-tfstate-avd-001). Requires re-bootstrap after."
+        type: boolean
+        default: false
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: cleanup-demo
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: delete project resource groups
+    runs-on: ubuntu-latest
+
+    # Always gated by the production Environment (required reviewer). OIDC subject is
+    # repo:<org>/<repo>:environment:production — matched by the github-env-production federated credential.
+    environment: production
+
+    env:
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      # Inputs via env vars (never interpolate ${{ inputs.* }} directly into run scripts).
+      CONFIRM_SUB: ${{ inputs.confirm_subscription_id }}
+      INCLUDE_BACKEND: ${{ inputs.include_state_backend }}
+
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Confirm target subscription
+        run: |
+          if [ "$CONFIRM_SUB" != "$ARM_SUBSCRIPTION_ID" ]; then
+            echo "::error::confirm_subscription_id does not match the configured subscription. Aborting."
+            exit 1
+          fi
+          az account set --subscription "$ARM_SUBSCRIPTION_ID"
+          echo "Confirmed subscription $ARM_SUBSCRIPTION_ID."
+
+      - name: Delete project resource groups
+        run: |
+          set -euo pipefail
+          # Project resource groups: names starting with rg-avd- (workload + shared, dev/prod).
+          mapfile -t rgs < <(az group list --query "[?starts_with(name, 'rg-avd-')].name" -o tsv)
+          if [ "$INCLUDE_BACKEND" = "true" ] && az group show -n rg-tfstate-avd-001 >/dev/null 2>&1; then
+            rgs+=("rg-tfstate-avd-001")
+          fi
+          if [ "${#rgs[@]}" -eq 0 ]; then
+            echo "No matching resource groups found — nothing to delete."
+            exit 0
+          fi
+          echo "The following resource groups will be deleted:"
+          printf '  - %s\n' "${rgs[@]}"
+          for rg in "${rgs[@]}"; do
+            echo "Deleting $rg ..."
+            az group delete --name "$rg" --yes --no-wait
+          done
+          echo "Deletion requested for ${#rgs[@]} resource group(s) (running asynchronously in Azure)."
