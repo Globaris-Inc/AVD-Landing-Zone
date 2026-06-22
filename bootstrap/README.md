@@ -63,9 +63,9 @@ terraform output -json
 ### 5. Wire GitHub
 - **Settings → Secrets and variables → Actions → Variables** (not secrets — OIDC needs none):
   `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
-- **Settings → Environments → `production`** — add a required reviewer. The `apply-on-merge`
-  workflow (PROMPT.md §12) references this environment; the matching federated credential
-  (`github-env-production`) is already created here.
+- **Settings → Environments → `production`** — add a required reviewer. The `manual-deploy` workflow
+  runs prod apply/destroy under this environment (required-reviewer gate); the matching federated
+  credential (`github-env-production`) is already created here.
 
 ---
 
@@ -75,8 +75,8 @@ terraform output -json
 - **Key Vault `kv-tfstate-<suffix>`** — dedicated CMK store; RBAC-authorised, soft-delete + purge
   protection (cannot be accidentally destroyed).
 - **Storage Account `sttfstate<suffix>`** — GZRS, **CMK** encryption, blob **versioning**, **shared
-  keys disabled** (Entra-ID/RBAC only), `tfstate` container with an unlocked immutability policy.
-- **OIDC SP `sp-avd-lz-cicd`** — no secret; federated creds for `main` push, `pull_request`, and the
+  keys disabled** (Entra-ID/RBAC only), `tfstate` container (no WORM — versioning provides state recovery).
+- **OIDC SP `sp-avd-lz-cicd`** — no secret; federated creds for the `main` ref, `pull_request`, and the
   `production` environment; **Contributor + User Access Administrator on the AVD subscription(s)** (ADR-0005,
   least-privilege replacement for Owner), plus Storage Blob Data Contributor on the state account.
 

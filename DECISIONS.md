@@ -219,3 +219,38 @@ configuration/compliance/app policies. These are a separate **Intune-as-code** e
   stack to avoid mixing provider ecosystems and ownership.
 - **Document only, no code** — rejected: the auto-enroll hook is small, host-local, and the natural place
   for it is the session-host extension.
+
+---
+
+## ADR-0007 — Deploys are explicit (workflow_dispatch), not merge-triggered
+
+- **Status:** Accepted
+- **Date:** 2026-06-21
+- **Deciders:** Project owner + DevSecOps Engineer
+
+### Context
+The original CI had `apply-on-merge.yml` auto-running `terraform apply` (prod) on every push to `main`
+touching `modules/**`, `envs/**`, `landing-zones/**`, or `.github/workflows/**` (gated by the `production`
+GitHub Environment). In practice the deploy cadence is **deliberate and manual** — dev and prod are
+mutually exclusive on the PoC subscription (10 vCPU regional cap), so dev is destroyed before each prod
+apply. Merge-triggered apply meant routine commits (docs, workflows, config) kept kicking off prod-apply
+runs, and "merge = deploy" doesn't match a destroy-first cadence.
+
+### Decision
+**Remove `apply-on-merge.yml`.** All applies (and destroys) go through the new **`manual-deploy.yml`**
+(`workflow_dispatch`): pick environment (dev|prod) + action (plan|apply|destroy); apply/destroy require a
+typed environment-name confirmation; prod apply/destroy run under the `production` Environment gate. PR
+plans stay on `plan-on-pr.yml`. The three federated credentials are unchanged and still used:
+`pull_request` (plan-on-pr), `main` ref (manual-deploy dev + plan), `environment:production`
+(manual-deploy prod apply/destroy).
+
+### Consequences
+- **Pro:** every deploy is an explicit, confirmed, gated action; routine pushes to `main` no longer trigger
+  prod applies; matches the destroy-first dev↔prod workflow; no duplicate apply paths.
+- **Con:** no automatic continuous-deployment on merge (intentional here; revisit if the workflow ever
+  shifts to true GitOps CD with non-overlapping environments/quota).
+
+### Alternatives considered
+- **Convert `apply-on-merge` to `workflow_dispatch`** — rejected: that just duplicates `manual-deploy`.
+- **Keep merge-triggered apply, rely on the env gate** — rejected: still fires (and demands approvals) on
+  non-deploy commits; noisy and error-prone.

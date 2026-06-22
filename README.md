@@ -65,7 +65,7 @@ Composition root: [`landing-zones/avd-workload/`](landing-zones/avd-workload).
 
 ```
 ARCHITECTURE.md  CLAUDE.md  PROMPT.md  WORKLOG.md  DECISIONS.md  OPEN-QUESTIONS.md   Governance
-.github/workflows/    plan-on-pr.yml, apply-on-merge.yml (OIDC, env-gated)
+.github/workflows/    plan-on-pr.yml (PR plan), manual-deploy.yml (dispatch plan/apply/destroy)
 bootstrap/            one-time: OIDC federation + Terraform state backend (CMK)
 modules/              the eight AVD modules above
 landing-zones/avd-workload/   composition root (calls the modules)
@@ -92,8 +92,9 @@ cd bootstrap && terraform init && terraform apply -var-file=terraform.tfvars
 # 2) Fill the <PLACEHOLDER>s in envs/<env>.backend.hcl and envs/<env>.tfvars from the outputs,
 #    and set the GitHub repo variables AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID.
 
-# 3) Let CI drive it: PRs run plan (dev); merge to main runs apply (prod, behind the
-#    'production' GitHub Environment). Or run locally:
+# 3) CI: PRs run plan (dev) via plan-on-pr. Deploys are explicit — run the manual-deploy workflow
+#    (Actions → manual-deploy → env + plan/apply/destroy; prod apply/destroy gated by the 'production'
+#    Environment). Or run locally:
 cd landing-zones/avd-workload
 terraform init -backend-config=../../envs/dev.backend.hcl
 terraform plan -var-file=../../envs/dev.tfvars
@@ -118,12 +119,11 @@ Common knobs in `envs/*.tfvars` (full list: [`landing-zones/avd-workload/variabl
 ## CI/CD
 
 - **`plan-on-pr.yml`** — `terraform fmt` + `validate` + `plan` (dev) on every pull request. No apply.
-- **`apply-on-merge.yml`** — `terraform apply` (prod) on merge to `main`, gated behind the `production`
-  GitHub Environment (required reviewer).
 - **`manual-deploy.yml`** — on-demand `workflow_dispatch` for **plan / apply / destroy** against a chosen
-  environment (dev|prod). apply/destroy require typing the environment name to confirm; prod apply/destroy
-  run under the `production` Environment gate. Use this for manual deploys and the destroy-dev-before-prod
-  step.
+  environment (dev|prod) — the **only** apply path. apply/destroy require typing the environment name to
+  confirm; prod apply/destroy run under the `production` Environment gate (required reviewer). Use this for
+  all deploys and the destroy-dev-before-prod step. (There is intentionally **no merge-triggered apply** —
+  every deploy is an explicit, confirmed action.)
 - Auth is **OIDC federated** (`azure/login`); pinned action versions; no long-lived secrets. The federated
   credentials are created by `bootstrap/`.
 
