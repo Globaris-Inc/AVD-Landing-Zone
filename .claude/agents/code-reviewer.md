@@ -25,6 +25,12 @@ AVM). You review; you do not implement. Report findings clearly and let the owni
 
 ## How you work
 - Inspect the actual diff (`git diff`, `git status`) and read the changed files; don't review from memory.
+- **Validate the way CI runs, not just statically.** For any change to Terraform, `envs/`, `.terraform-version`,
+  or `.github/workflows/`, run **`bash scripts/preflight.sh`** and treat a non-zero exit as a blocker. It
+  catches the class of defects a static read misses because they live outside the repo: a CI-vs-pinned
+  Terraform-version divergence, a **module `required_version` floor that exceeds our pin** (this exact bug
+  shipped once), and workflow YAML errors (`actionlint`). Don't approve "it validated locally" — confirm the
+  pinned/CI version is the one that validates.
 - Run the `/code-review` workflow for a structured pass; request `/security-review` from the
   `devsecops-engineer` for security-sensitive changes.
 - Categorize findings: **blocker** (must fix before merge), **should-fix**, **nit** — cite `file:line`

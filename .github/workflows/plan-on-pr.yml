@@ -80,6 +80,21 @@ jobs:
         working-directory: .
         run: terraform fmt -check -recursive
 
+      # State account is default-Deny firewalled (deployer IP only); allow this runner's egress IP for the
+      # run and remove it in the always() step below. The bootstrap root owns the baseline (var.ip_allow_list).
+      - name: Open state firewall to this runner
+        id: fw
+        run: |
+          set -euo pipefail
+          BACKEND="../../envs/dev.backend.hcl"
+          RG=$(grep -E '^resource_group_name'  "$BACKEND" | sed -E 's/.*"([^"]+)".*/\1/')
+          SA=$(grep -E '^storage_account_name' "$BACKEND" | sed -E 's/.*"([^"]+)".*/\1/')
+          IP=$(curl -fsS https://api.ipify.org)
+          az storage account network-rule add -g "$RG" --account-name "$SA" --ip-address "$IP" -o none
+          { echo "rg=$RG"; echo "sa=$SA"; echo "ip=$IP"; } >> "$GITHUB_OUTPUT"
+          echo "Allowed runner IP $IP on $SA; waiting for the network rule to propagate..."
+          sleep 25
+
       - name: Terraform init (dev backend)
         run: terraform init -backend-config=../../envs/dev.backend.hcl -input=false
 
@@ -100,3 +115,12 @@ jobs:
 
       - name: Terraform plan (dev)
         run: terraform plan -var-file=../../envs/dev.tfvars -input=false -no-color
+
+      # Always remove this runner's IP from the state-account firewall, even if a prior step failed.
+      - name: Close state firewall
+        if: ${{ always() && steps.fw.outputs.ip != '' }}
+        env:
+          RG: ${{ steps.fw.outputs.rg }}
+          SA: ${{ steps.fw.outputs.sa }}
+          IP: ${{ steps.fw.outputs.ip }}
+        run: az storage account network-rule remove -g "$RG" --account-name "$SA" --ip-address "$IP" -o none || true
