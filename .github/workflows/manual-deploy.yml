@@ -98,6 +98,23 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      # The state Storage Account is default-Deny firewalled (only the deployer IP). A hosted runner has a
+      # dynamic egress IP that isn't allow-listed, so backend calls would be blocked/throttled. Add this
+      # runner's IP for the run, then remove it in the always() step below.
+      # NOTE: the bootstrap root owns the firewall baseline (var.ip_allow_list) — this add/remove is transient.
+      - name: Open state firewall to this runner
+        id: fw
+        run: |
+          set -euo pipefail
+          BACKEND="../../envs/${TF_ENV}.backend.hcl"
+          RG=$(grep -E '^resource_group_name'  "$BACKEND" | sed -E 's/.*"([^"]+)".*/\1/')
+          SA=$(grep -E '^storage_account_name' "$BACKEND" | sed -E 's/.*"([^"]+)".*/\1/')
+          IP=$(curl -fsS https://api.ipify.org)
+          az storage account network-rule add -g "$RG" --account-name "$SA" --ip-address "$IP" -o none
+          { echo "rg=$RG"; echo "sa=$SA"; echo "ip=$IP"; } >> "$GITHUB_OUTPUT"
+          echo "Allowed runner IP $IP on $SA; waiting for the network rule to propagate..."
+          sleep 25
+
       - name: Terraform init
         run: terraform init -backend-config="../../envs/${TF_ENV}.backend.hcl" -input=false
 
@@ -116,3 +133,12 @@ jobs:
       - name: Terraform destroy
         if: ${{ inputs.action == 'destroy' }}
         run: terraform destroy -auto-approve -var-file="../../envs/${TF_ENV}.tfvars" -input=false -no-color
+
+      # Always remove this runner's IP from the state-account firewall, even if a prior step failed.
+      - name: Close state firewall
+        if: ${{ always() && steps.fw.outputs.ip != '' }}
+        env:
+          RG: ${{ steps.fw.outputs.rg }}
+          SA: ${{ steps.fw.outputs.sa }}
+          IP: ${{ steps.fw.outputs.ip }}
+        run: az storage account network-rule remove -g "$RG" --account-name "$SA" --ip-address "$IP" -o none || true

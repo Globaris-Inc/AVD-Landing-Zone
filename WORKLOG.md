@@ -49,6 +49,31 @@
 
 ## Sessions
 
+### Session 2026-06-24 (x) — CI Terraform-version fix + gate hardening + firewalled-state CI handling
+
+Triggered by the first real CI run failing on `Unsupported Terraform Core version` (AVM storage/compute
+modules require `>= 1.10`; CI pinned 1.9.8; local 1.15.6 had always satisfied it, and the floor lives in
+gitignored module code so static review couldn't see it).
+
+- **Fix (commit `81e49de`):** CI `terraform_version` 1.9.8 → 1.15.6; root `required_version` `>= 1.9` →
+  `>= 1.10`; docs aligned. (Also confirmed OIDC + the repo *Variables* now work.)
+- **Gate hardening ("validate the way CI runs"):** added `.terraform-version` (1.15.6) and
+  `scripts/preflight.sh` — checks CI-pin vs `.terraform-version`, runs isolated `init -backend=false` +
+  `validate` (via `TF_DATA_DIR`, non-destructive), a **module `required_version` floor check** (would have
+  caught this bug: "pin < floor → FAIL"), and `actionlint`. Wired into `.claude/agents/code-reviewer.md`
+  (mandatory for IaC/workflow changes) and `.githooks/pre-commit` (best-effort actionlint on workflow diffs).
+- **Firewalled-state CI handling:** the state SA is default-Deny (deployer IP only), so hosted runners
+  aren't allow-listed. Added open/close `az storage account network-rule` steps around `init` in
+  `plan-on-pr` + `manual-deploy` (always() removal). Candidate fix for the slow backend `init` + correct CI
+  reliability hardening regardless.
+- **Environment note:** the user's `cleanup-demo` run (variables now fixed) executed with
+  `include_state_backend = true` and removed **everything incl. `rg-tfstate-avd-001`** (2 soft-deleted KVs
+  linger). Subscription is empty but for `NetworkWatcherRG`. **Re-bootstrap required before any deploy.**
+
+**Suggested commit:** `chore(ci): harden gate (preflight version-floor check) + firewalled-state CI handling`
+
+---
+
 ### Session 2026-06-21 (w) — Manual-deploy workflow + remove apply-on-merge; prod env configured
 
 Post-deploy CI/operational changes (all committed + pushed to origin/main; reviewer-gated):
