@@ -6,7 +6,9 @@ landing zone (PROMPT.md §13).
 ## Verified in this repo
 
 - **`terraform validate` clean** on both roots: `bootstrap/` and `landing-zones/avd-workload/`
-  (Terraform v1.15.6, providers + all AVM modules resolved; CI pins 1.9.8 — both satisfy `>= 1.9`). One warning originates *inside* the pinned
+  (Terraform v1.15.6, providers + all AVM modules resolved). **Terraform ≥ 1.10 is required** — the AVM
+  storage/compute modules raised their floor to `>= 1.10`; CI pins **1.15.6** to match local (an earlier
+  1.9.8 pin failed CI with `Unsupported Terraform Core version`). One warning originates *inside* the pinned
   Log Analytics AVM module (`local_authentication_disabled`) and is not actionable here.
 - **`terraform fmt -recursive`** clean.
 - Every section passed the **`code-reviewer` gate**. §10/§11 were self-reviewed at section time (the

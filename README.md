@@ -79,7 +79,7 @@ docs/                 naming/tagging, role workflow, acceptance
 1. A deployed **CAF platform landing zone** (connectivity / identity / management). Not created here.
 2. **Microsoft Entra ID join** for session hosts is the baseline (ADR-0003); Entra Kerberos enables
    FSLogix on Azure Files. (`entra-ds` / `ad-ds` are toggle options.)
-3. Tooling: **Terraform ≥ 1.9**, `azurerm` ≥ 4, Azure CLI (plus `azuread` ≥ 3 for `bootstrap/` only).
+3. Tooling: **Terraform ≥ 1.10** (required by the AVM storage/compute modules; CI pins 1.15.6), `azurerm` ≥ 4, Azure CLI (plus `azuread` ≥ 3 for `bootstrap/` only).
    On Windows, set `git config --global core.longpaths true` (AVM modules nest deeply).
 4. Subscription(s) for the AVD **workload** (+ optional shared-services).
 
