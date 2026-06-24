@@ -1,0 +1,152 @@
+# bootstrap.yml — re-create the Terraform remote-state backend from the Actions UI (workflow_dispatch).
+# Section: PROMPT.md §12 — CI/CD (GitHub Actions, OIDC). Implements DECISIONS.md ADR-0008.
+#
+# EPHEMERAL STATE (ADR-0008): bootstrap runs with THROWAWAY local state on the runner — it `init`s a
+# fresh LOCAL backend (no -backend-config), `apply`s, and the runner is discarded. Bootstrap cannot adopt
+# a remote backend because it is the layer that CREATES that backend (chicken-and-egg, ADR-0002). Losing
+# the state is safe in this model: teardown is `az group delete` (cleanup-demo.yml), deploys reach the
+# state account by name over the data plane — neither path reads bootstrap's .tfstate.
+#
+# DETERMINISTIC NAMING (ADR-0008): the state Storage Account / Key Vault suffix is derived from the
+# subscription ID (substr(sha1(lower(id)),0,8)), not random_string. Every re-bootstrap against the same
+# subscription produces the SAME names, so envs/*.backend.hcl stays valid across teardown/rebuild cycles.
+# This run RECREATES the backend (RG, UAMI, Key Vault + CMK, Storage Account + tfstate container).
+#
+# KEY VAULT RECOVERY: Key Vault names are globally unique and stay reserved while soft-deleted, and purge
+# protection blocks purging until the 90-day window elapses. After a cleanup-demo run that deleted
+# rg-tfstate-avd-001, the deterministic kv-tfstate-<suffix> is SOFT-DELETED. The azurerm provider
+# RECOVERS it (recover_soft_deleted_key_vaults = true in bootstrap/providers.tf) instead of failing with
+# VaultAlreadyExists.
+#
+# IP ALLOW-LIST: this run sets the state-account / Key Vault firewall allow-list to ONLY this runner's
+# public IP (ip_allow_list = ["<runner-ip>/32"]). That is the firewall baseline bootstrap owns — a
+# re-bootstrap RESETS the allow-list to just the runner. A human deploying or running bootstrap from a
+# workstation must RE-ADD their own IP afterward (e.g. via `az storage account network-rule add` /
+# `az keyvault network-rule add`, or by re-running with their IP in ip_allow_list). manual-deploy.yml
+# already adds/removes its own runner IP transiently per run, so deploys are unaffected.
+#
+# AUTH / GATING: OIDC, no secrets. Runs under the `production` GitHub Environment (required reviewer) and
+# requires a typed subscription-ID confirmation — identical posture to cleanup-demo.yml. OIDC subject is
+# repo:<org>/<repo>:environment:production, matched by the existing github-env-production federated
+# credential (no new federated credential needed). create_oidc_identity = false: the OIDC app/SP/RBAC are
+# NOT re-created (the SP is the very identity this workflow authenticates as — it cannot bootstrap itself).
+
+name: bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_subscription_id:
+        description: "Type the target subscription ID to confirm. Aborts unless it matches AZURE_SUBSCRIPTION_ID."
+        type: string
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+# Never run two bootstraps at once, and never cancel an in-flight one (avoid half-created backend).
+concurrency:
+  group: bootstrap
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    name: recreate state backend
+    runs-on: ubuntu-latest
+
+    # Always gated by the production Environment (required reviewer). OIDC subject is
+    # repo:<org>/<repo>:environment:production — matched by the github-env-production federated credential.
+    environment: production
+
+    defaults:
+      run:
+        working-directory: bootstrap
+
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+      # Backend-only re-bootstrap (ADR-0008): the OIDC identity already exists and is reused, not recreated.
+      TF_VAR_create_oidc_identity: "false"
+      TF_IN_AUTOMATION: "true"
+      # Input via env var (never interpolate ${{ inputs.* }} directly into run scripts — injection vector).
+      CONFIRM_SUB: ${{ inputs.confirm_subscription_id }}
+
+    steps:
+      - name: Confirm target subscription
+        run: |
+          if [ "$CONFIRM_SUB" != "$ARM_SUBSCRIPTION_ID" ]; then
+            echo "::error::confirm_subscription_id does not match the configured subscription. Aborting."
+            exit 1
+          fi
+          echo "Confirmed subscription $ARM_SUBSCRIPTION_ID."
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.6" # >= 1.10 required by the workload root; matches local + other workflows
+          terraform_wrapper: false
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # The backend firewall (Storage + Key Vault) is default-Deny. This run sets the allow-list to ONLY
+      # this runner's IP so terraform can reach the data plane while creating resources. See header.
+      - name: Get runner IP
+        id: ip
+        run: |
+          set -euo pipefail
+          IP=$(curl -fsS https://api.ipify.org)
+          echo "ip=$IP" >> "$GITHUB_OUTPUT"
+          echo "Runner public IP: $IP"
+
+      # LOCAL state (ADR-0008): NO -backend-config. The runner's state is throwaway and discarded.
+      - name: Terraform init (local state)
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform apply
+        env:
+          RUNNER_IP: ${{ steps.ip.outputs.ip }}
+        run: terraform apply -auto-approve -input=false -no-color -var "ip_allow_list=[\"${RUNNER_IP}/32\"]"
+
+      # Surface the backend names AND hard-fail if the computed Storage Account name drifts from
+      # envs/dev.backend.hcl — cheap guard that the deterministic suffix still matches the committed contract.
+      - name: Report backend + drift guard
+        run: |
+          set -euo pipefail
+          SA=$(terraform output -raw storage_account_name)
+          KV=$(terraform output -raw key_vault_name)
+          {
+            echo "### Bootstrap complete"
+            echo ""
+            echo "| Output | Value |"
+            echo "| --- | --- |"
+            echo "| storage_account_name | \`$SA\` |"
+            echo "| key_vault_name | \`$KV\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Both dev and prod backend configs must reference the just-created account.
+          drift=0
+          for env in dev prod; do
+            HCL=$(grep -E '^storage_account_name' "../envs/${env}.backend.hcl" | sed -E 's/.*"([^"]+)".*/\1/')
+            if [ "$SA" != "$HCL" ]; then
+              echo "::error::computed storage_account_name ('$SA') != envs/${env}.backend.hcl ('$HCL'). Update envs/${env}.backend.hcl."
+              echo "DRIFT: computed '$SA' != envs/${env}.backend.hcl '$HCL'" >> "$GITHUB_STEP_SUMMARY"
+              drift=1
+            fi
+          done
+          [ "$drift" -eq 0 ] && echo "Drift guard OK: computed name matches envs/{dev,prod}.backend.hcl ($SA)." || exit 1

@@ -254,3 +254,110 @@ plans stay on `plan-on-pr.yml`. The three federated credentials are unchanged an
 - **Convert `apply-on-merge` to `workflow_dispatch`** — rejected: that just duplicates `manual-deploy`.
 - **Keep merge-triggered apply, rely on the env gate** — rejected: still fires (and demands approvals) on
   non-deploy commits; noisy and error-prone.
+
+---
+
+## ADR-0008 — CI bootstrap via `workflow_dispatch` — ephemeral state + deterministic naming
+
+- **Status:** Accepted
+- **Date:** 2026-06-24
+- **Deciders:** Project owner + Cloud Solutions Architect + DevSecOps Engineer
+- **Supplements:** ADR-0002 (bootstrap layer). Does not supersede it — the backend design (GZRS, CMK,
+  shared keys disabled, OIDC, IP allow-list) is unchanged. This ADR only changes *how bootstrap is run*
+  (a CI workflow) and *how the backend resources are named* (deterministic, not `random_string`).
+
+### Context
+ADR-0002 made `bootstrap/` a **one-time, manual, local-state** layer: an operator runs `terraform apply`
+on a workstation, then hand-copies the outputs into `envs/{dev,prod}.backend.hcl` and the GitHub repo
+variables. Two problems surface in the demo/PoC operating model:
+
+1. **No CI path to re-bootstrap.** `cleanup-demo.yml` (with `include_state_backend = true`) deletes
+   `rg-tfstate-avd-001` via `az group delete`. Recreating the backend then requires a human on a
+   workstation with the local state file — there is no equivalent of `manual-deploy.yml` for the
+   backend itself. The backend is the one thing the demo cannot rebuild from the Actions UI.
+
+2. **Naming is non-reproducible.** The state Storage Account (`sttfstate<suffix>`) and Key Vault
+   (`kv-tfstate-<suffix>`) take their suffix from `random_string.suffix`, whose value lives **only in
+   bootstrap's local state**. If that state is lost (or bootstrap is re-run on a fresh runner), the
+   suffix changes, the new account/vault names no longer match the hardcoded values in
+   `envs/{dev,prod}.backend.hcl`, and every consumer's `init` breaks until the files are hand-edited.
+
+The bootstrap state is **not needed for steady-state operation**: teardown is `az group delete` (not
+`terraform destroy`), and deploys (`manual-deploy.yml`) reach the Storage Account by name over the data
+plane — neither path reads bootstrap's `.tfstate`. The only thing the state carries that matters is the
+random suffix, and that is exactly what makes re-bootstrap non-reproducible.
+
+### Decision
+**Ephemeral state + deterministic naming**, run from a new `bootstrap.yml` (`workflow_dispatch`):
+
+1. **Bootstrap runs with throwaway (local) state on the GitHub runner; its state is NOT persisted.**
+   Each run `init`s a fresh local backend, `apply`s, and discards the runner. Bootstrap does not adopt a
+   remote backend (that would reintroduce the chicken-and-egg ADR-0002 calls out).
+
+2. **The suffix becomes a deterministic function of the subscription ID**, replacing
+   `random_string.suffix`. Every re-bootstrap against the same subscription produces the **same** names,
+   so `envs/*.backend.hcl` stays valid across teardown/rebuild cycles without hand-editing:
+   `suffix = substr(sha1(lower(var.subscription_id)), 0, 8)` (8 lowercase hex chars). Adopted by the
+   Storage Account (`sttfstate<suffix>`) and the Key Vault (`kv-tfstate-<suffix>`). The Resource Group
+   (`rg-tfstate-avd-001`) and container (`tfstate`) are already deterministic.
+
+3. **`envs/{dev,prod}.backend.hcl` are updated once** to the computed Storage Account name and committed,
+   becoming a stable contract. The RG name does not change.
+
+4. **`bootstrap.yml` is OIDC-authenticated and gated** identically to `manual-deploy.yml`: it runs under
+   the `production` GitHub Environment (required-reviewer) and requires a typed subscription-ID
+   confirmation. OIDC subject is `:environment:production`, matched by the existing `github-env-production`
+   federated credential — no new federated credential is needed.
+
+5. **The workflow runs the state-backend resources only** (`create_oidc_identity = false`). The OIDC
+   identity (app reg / SP / federated creds / subscription RBAC) is **not** re-created by CI — it already
+   exists and is reused (the SP is the very identity the workflow authenticates as; it cannot bootstrap
+   itself). Backend-only is the same posture as the current live deployment.
+
+### Consequences
+- **Pro:** re-bootstrap is a one-click, gated, OIDC, secret-less Action — symmetric with
+  `cleanup-demo.yml`. Names are reproducible, so `envs/*.backend.hcl` never drifts after a backend
+  rebuild. No local state file to protect or lose. No new federated credential or RBAC surface.
+- **Pro:** discarding bootstrap state is safe **in this model** — teardown is `az group delete`, deploys
+  use the account by name; neither needs the state. (Validated below.)
+- **Con — Key Vault recovery is now load-bearing, not optional.** Key Vault names are **globally unique
+  and stay reserved while soft-deleted**, and **purge protection means the vault cannot be purged until
+  the retention window elapses** (90 days here) — not even by Microsoft. With a deterministic name, a
+  re-bootstrap after `include_state_backend` cleanup will hit the **soft-deleted** `kv-tfstate-<suffix>`.
+  This is handled by `recover_soft_deleted_key_vaults = true` (already set in `bootstrap/providers.tf`):
+  the provider **recovers** the soft-deleted vault instead of failing. The CI principal must therefore
+  hold the recover permission (`Microsoft.KeyVault/locations/deletedVaults/.../recover` — covered by its
+  subscription Contributor + the Key Vault data-plane roles bootstrap assigns). Without this flag a
+  re-bootstrap would fail with `VaultAlreadyExists` / conflict. This was true under random naming too,
+  but random naming usually *dodged* it by minting a new name; deterministic naming guarantees the
+  collision, so recovery must work every time.
+- **Con — predictable names.** The Storage Account and Key Vault names are now derivable from the
+  (non-secret) subscription ID. This is acceptable: auth is **Entra ID / RBAC only** (shared keys
+  disabled on the SA, RBAC authorization on the KV), both are **default-Deny firewalled** to the
+  deployer/runner IPs, and the names are not secrets. Predictability removes no security control. (It
+  marginally aids enumeration, but enumeration without RBAC yields nothing.) SHA1 is used purely as a
+  name-shortening hash, not for any security property — not a cryptographic concern.
+- **Con — global-uniqueness risk.** An 8-hex-char suffix derived from a 36-char GUID gives 2^32 of the
+  hash space; a `sttfstate<8hex>` collision with another tenant's account is astronomically unlikely but
+  not impossible. If a run ever fails with `StorageAccountAlreadyTaken`, lengthen the suffix or fold in
+  the RG name — see the spec. (`kv-tfstate-<8hex>` = 18 chars, within the 24-char KV limit.)
+- **Con — re-bootstrap is not a true `terraform destroy`-able layer.** Because state is discarded, the
+  backend can only be torn down out-of-band (`az group delete` via `cleanup-demo.yml`), never by
+  `terraform destroy`. Accepted: that is already the only teardown path in this repo.
+
+### Alternatives considered
+- **Self-host bootstrap state (persist it remotely).** Give bootstrap its own remote backend (a second,
+  manually-created Storage Account, or a separate `tfstate-bootstrap` container). Rejected: reintroduces
+  a chicken-and-egg seed account that itself must be bootstrapped, adds a persistent state blob to
+  protect, and buys nothing — steady-state ops never read bootstrap state. Determinism makes the suffix
+  reproducible without persisting anything.
+- **Keep local-only / manual bootstrap (status quo, ADR-0002).** Rejected: no CI re-bootstrap path,
+  asymmetric with `cleanup-demo.yml`, and the random suffix breaks `envs/*.backend.hcl` on any state
+  loss — the exact failure this ADR removes.
+- **Keep `random_string` but persist its output as a GitHub variable.** Rejected: still requires a place
+  to store/restore the value and a manual step to wire it; a pure function of the subscription ID needs
+  no storage at all.
+- **Use Azure's `uniqueString`-style hash of the RG resource ID.** Equivalent idea; the subscription ID
+  is the more stable, earlier-known input (the RG ID embeds the same subscription ID plus a fixed name),
+  and is available before any resource is created. Folding the RG name in is the documented fallback if a
+  collision ever occurs.

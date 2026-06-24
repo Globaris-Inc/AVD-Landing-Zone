@@ -33,16 +33,17 @@ locals {
   # Both Key Vault network_acls AND Storage network_rules reject /31 and /32 suffixes — they accept bare
   # IPs (or /0–/30 CIDRs). Strip a /32 from each entry so a single-IP allow-list works for both.
   ip_rules = [for ip in var.ip_allow_list : trimsuffix(ip, "/32")]
+
+  # Deterministic name suffix (ADR-0008): a function of the subscription ID, NOT random_string.
+  # The subscription ID is the same on every re-bootstrap, so the state Storage Account and Key Vault
+  # names are reproducible — envs/*.backend.hcl stays valid across teardown/rebuild cycles without
+  # hand-editing. var.subscription_id is lowercased before hashing so the value matches the precomputed
+  # hcl values (the live ID is already lowercase). 8 lowercase hex chars. SHA1 is used purely to shorten
+  # a name, not for any security property.
+  suffix = substr(sha1(lower(var.subscription_id)), 0, 8)
 }
 
 data "azurerm_client_config" "current" {}
-
-# Stable unique suffix — changes only if tainted/destroyed.
-resource "random_string" "suffix" {
-  length  = 6
-  upper   = false
-  special = false
-}
 
 # ---------------------------------------------------------------------------
 # Resource Group
@@ -70,7 +71,7 @@ resource "azurerm_user_assigned_identity" "tfstate" {
 # ---------------------------------------------------------------------------
 
 resource "azurerm_key_vault" "tfstate" {
-  name                = "kv-tfstate-${random_string.suffix.result}"
+  name                = "kv-tfstate-${local.suffix}"
   resource_group_name = azurerm_resource_group.tfstate.name
   location            = azurerm_resource_group.tfstate.location
   tenant_id           = var.tenant_id
@@ -162,7 +163,7 @@ resource "time_sleep" "wait_for_storage_rbac" {
 # ---------------------------------------------------------------------------
 
 resource "azurerm_storage_account" "tfstate" {
-  name                     = "sttfstate${random_string.suffix.result}"
+  name                     = "sttfstate${local.suffix}"
   resource_group_name      = azurerm_resource_group.tfstate.name
   location                 = azurerm_resource_group.tfstate.location
   account_tier             = "Standard"

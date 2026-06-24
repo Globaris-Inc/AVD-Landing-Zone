@@ -5,7 +5,7 @@
 # No secrets here — auth is via Entra ID / OIDC (use_azuread_auth = true).
 
 resource_group_name  = "rg-tfstate-avd-001"    # bootstrap output: resource_group_name
-storage_account_name = "sttfstatetd8ci5"       # bootstrap output: storage_account_name
+storage_account_name = "sttfstatec6dacafe"     # bootstrap output: storage_account_name (deterministic, ADR-0008)
 container_name       = "tfstate"               # bootstrap output: storage_container_name
 key                  = "avd/prod.terraform.tfstate" # separate state key from dev (same backend account)
 use_azuread_auth     = true

@@ -29,6 +29,24 @@
 
 ---
 
+## 2026-06-24 — Architect: CI bootstrap design (ephemeral state + deterministic naming)
+
+- **Decision:** Authored **ADR-0008** in `DECISIONS.md` (supplements ADR-0002): bootstrap re-runs via a
+  new `bootstrap.yml` (`workflow_dispatch`, OIDC, `production`-gated) with **ephemeral/local state**; the
+  SA/KV suffix moves from `random_string` to **deterministic** `substr(sha1(lower(subscription_id)), 0, 8)`.
+- **Validated** the "ephemeral state is safe" reasoning: teardown is `az group delete` (cleanup-demo), and
+  deploys reach the SA by name (manual-deploy) — neither reads bootstrap state. Confirmed.
+- **Flagged as load-bearing:** Key Vault recovery. Deterministic names guarantee a soft-deleted-vault
+  collision on re-bootstrap; `recover_soft_deleted_key_vaults = true` (already set) must recover it
+  (verified KV global-name reservation + purge-protection behaviour against MS Learn).
+- **Files:** `DECISIONS.md` (ADR-0008), `ARCHITECTURE.md` (state-backend line), `bootstrap/README.md`
+  (naming + recovery sections). **Design/doc only — no Terraform or workflow written this session.**
+- **Hand-off:** design spec delivered in-chat for the **devsecops-engineer** to implement `bootstrap.yml`,
+  the `bootstrap/main.tf` suffix change, and the `envs/*.backend.hcl` SA-name update. Implementation MUST
+  recompute the new SA name from the live subscription ID before editing the backend HCL files.
+
+---
+
 ## Pending Commits
 
 > `git init` ran (branch `main`); nothing committed yet. Suggested commit once the user is ready:
