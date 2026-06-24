@@ -378,7 +378,7 @@ terraform apply -var-file=../../envs/dev.tfvars</pre>
         <tr><th>Region</th><td>Central US (<code>centralus</code> / <code>cus</code>)</td></tr>
         <tr><th>Identity model</th><td>Microsoft Entra ID join (cloud-only)</td></tr>
         <tr><th>Naming</th><td><code>&lt;type&gt;-avd-&lt;env&gt;-cus</code> · e.g. <code>rg-avd-dev-cus</code>, <code>vdpool-avd-dev-cus</code>, <code>vmavddevcus01</code></td></tr>
-        <tr><th>State backend</th><td><code>rg-tfstate-avd-001</code> → <code>sttfstatetd8ci5</code> (container <code>tfstate</code>, key per env)</td></tr>
+        <tr><th>State backend</th><td><code>rg-tfstate-avd-001</code> → <code>sttfstatec6dacafe</code> (deterministic name, ADR-0008; container <code>tfstate</code>, key per env)</td></tr>
         <tr><th>CI identity</th><td>App registration <code>GitHubActionsApp</code> · OIDC federation · Contributor + User Access Administrator</td></tr>
         <tr><th>Toolchain</th><td>Terraform ≥ 1.10 (CI pins 1.15.6) · <code>azurerm</code> ≥ 4 · <code>azuread</code> ≥ 3 (bootstrap only) · GitHub Actions</td></tr>
       </tbody>

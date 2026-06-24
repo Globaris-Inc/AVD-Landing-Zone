@@ -76,6 +76,10 @@ terraform output -json
   protection (cannot be accidentally destroyed).
 - **Storage Account `sttfstate<suffix>`** — GZRS, **CMK** encryption, blob **versioning**, **shared
   keys disabled** (Entra-ID/RBAC only), `tfstate` container (no WORM — versioning provides state recovery).
+
+> **`<suffix>` is deterministic** (ADR-0008): `substr(sha1(lower(subscription_id)), 0, 8)`. The same
+> subscription always yields the same SA/KV names, so re-bootstrap reproduces the names and
+> `envs/*.backend.hcl` stays valid. (Previously a `random_string`, whose value lived only in local state.)
 - **OIDC SP `sp-avd-lz-cicd`** — no secret; federated creds for the `main` ref, `pull_request`, and the
   `production` environment; **Contributor + User Access Administrator on the AVD subscription(s)** (ADR-0005,
   least-privilege replacement for Owner), plus Storage Blob Data Contributor on the state account.
@@ -92,9 +96,21 @@ terraform output -json
 
 ---
 
-## Recovery
+## Recovery / re-bootstrap
 
-If the local `terraform.tfstate` is lost: re-run `terraform init` (local backend), then
-`terraform import` each resource by its Azure resource ID and `terraform plan` to confirm parity
-before applying. Key resources to import: the resource group, storage account, key vault,
-`random_string.suffix`, and the `azuread_application` / `azuread_service_principal`.
+Bootstrap uses **ephemeral state** (ADR-0008): its `.tfstate` is **not** persisted and is never needed
+for teardown (`az group delete` via `cleanup-demo.yml`) or deploys (`manual-deploy.yml` reaches the SA by
+name). Because the SA/KV names are **deterministic** (`substr(sha1(lower(subscription_id)), 0, 8)`), a
+re-bootstrap reproduces the same backend without importing anything.
+
+**Re-bootstrap is a clean re-apply** (local/ephemeral state, `create_oidc_identity = false`) — run it
+from CI via `bootstrap.yml` (`workflow_dispatch`, OIDC, `production`-gated) or locally. Notes:
+
+- The **Resource Group / Storage Account** are re-created idempotently; if they already exist the apply
+  reconciles them (re-running against a live backend is a no-op plan).
+- The **Key Vault is recovered, not re-created.** Its name stays globally reserved while soft-deleted and
+  purge protection blocks purge for the full retention window (90 days, not even by Microsoft), so a
+  re-bootstrap hits the soft-deleted `kv-tfstate-<suffix>`. `recover_soft_deleted_key_vaults = true`
+  (in `providers.tf`) makes the provider **recover** it. Do **not** purge the vault — recovery is the
+  intended path and keeps the CMK key intact.
+- **Role assignments** are idempotent (same principals, same scopes); re-apply reconciles them.

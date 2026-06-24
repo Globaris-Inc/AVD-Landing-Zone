@@ -67,7 +67,11 @@ An **application** landing zone for AVD, on top of an existing CAF **platform** 
   `fslogix_account_replication_type`, default `ZRS`). **Not yet wired (future BCDR):** Azure Files
   **backup**, and **FSLogix Cloud Cache** / cross-region replication for multi-region DR — these would
   set/lower the RPO. `prevent_destroy` on the profile store is also a recommended follow-up.
-- **State backend:** GZRS + blob versioning (bootstrap).
+- **State backend:** GZRS + blob versioning + CMK (bootstrap). Resource names are **deterministic** —
+  the SA/KV suffix is `substr(sha1(lower(subscription_id)), 0, 8)` (ADR-0008), so re-bootstrap reproduces
+  the same names and `envs/*.backend.hcl` stays valid. Bootstrap runs with **ephemeral/local state** (its
+  state is discarded; teardown is `az group delete`, deploys reach the SA by name — neither needs it) and
+  can be re-run from CI via `bootstrap.yml` (`workflow_dispatch`, OIDC, `production`-Environment gated).
 
 ## Open decisions
 None outstanding. Recently resolved: OQ-006 identity model (Entra ID join, ADR-0003); OQ-007 CI principal
