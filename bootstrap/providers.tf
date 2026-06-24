@@ -11,7 +11,7 @@
 # Terraform Registry before a production run.
 
 terraform {
-  required_version = ">= 1.9"
+  required_version = ">= 1.10" # align with the workload root + AVM floor (bootstrap itself is native azurerm)
 
   required_providers {
     azurerm = {

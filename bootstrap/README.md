@@ -17,7 +17,7 @@ modules (`landing-zones/`, etc.) use the remote backend created here.
 | Requirement | How |
 |---|---|
 | Azure CLI ≥ 2.x | `az --version` |
-| Terraform ≥ 1.9 | `terraform --version` |
+| Terraform ≥ 1.10 | `terraform --version` |
 | **Owner or User Access Administrator + Contributor** on the AVD subscription(s) | to run bootstrap, which itself grants the CI principal Contributor + User Access Administrator (ADR-0005) |
 | **App Administrator / Privileged Role Admin** on Entra ID | to create the app registration |
 

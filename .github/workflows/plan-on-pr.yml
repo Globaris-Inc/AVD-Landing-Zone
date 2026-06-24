@@ -63,7 +63,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.9.8"
+          terraform_version: "1.15.6" # >= 1.10 required by avm storage/compute modules; matches local
           terraform_wrapper: false
 
       # OIDC login. Pulls the federated token (subject repo:<org>/<repo>:pull_request) and

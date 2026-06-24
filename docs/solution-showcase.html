@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Azure Virtual Desktop — Application Landing Zone · Technical Showcase</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    if (window.mermaid) { mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: {
+      primaryColor: '#1b2a4a', primaryTextColor: '#e8eefc', primaryBorderColor: '#3b5488',
+      lineColor: '#7d97c8', secondaryColor: '#162038', tertiaryColor: '#0f1626', fontSize: '14px'
+    }}); }
+  });
+</script>
+<style>
+  :root{
+    --bg:#0d1320; --panel:#141d30; --panel2:#1a2540; --ink:#e8eefc; --muted:#9fb0d0;
+    --line:#27324d; --accent:#5b8cff; --accent2:#36d399; --warn:#f4b860; --bad:#f87272; --good:#36d399;
+    --code:#0a0f1c;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{display:grid;grid-template-columns:260px 1fr;max-width:1280px;margin:0 auto;gap:0}
+  /* sidebar */
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:24px 16px;
+    border-right:1px solid var(--line);background:#0b1019}
+  nav.toc h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  nav.toc a{display:block;color:var(--muted);padding:5px 8px;border-radius:6px;font-size:13.5px}
+  nav.toc a:hover{background:var(--panel2);color:var(--ink);text-decoration:none}
+  nav.toc .brand{font-weight:700;font-size:15px;color:var(--ink);margin-bottom:2px}
+  nav.toc .brand small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+  /* content */
+  main{padding:40px 48px 120px;max-width:980px}
+  header.hero{border:1px solid var(--line);background:linear-gradient(160deg,#16213c,#0e1526);
+    border-radius:16px;padding:32px 34px;margin-bottom:34px}
+  header.hero h1{margin:0 0 6px;font-size:30px;line-height:1.2}
+  header.hero p.sub{margin:0 0 18px;color:var(--muted);font-size:16px}
+  .badges{display:flex;flex-wrap:wrap;gap:8px}
+  .badge{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);
+    background:var(--panel);color:var(--muted)}
+  .badge.ok{border-color:#1f5b41;background:#10271d;color:var(--good)}
+  .badge.tech{border-color:#27407a;background:#121d36;color:#9cc0ff}
+  section{margin:0 0 40px;scroll-margin-top:20px}
+  section h2{font-size:22px;border-bottom:1px solid var(--line);padding-bottom:8px;margin:0 0 18px}
+  section h3{font-size:17px;margin:26px 0 10px;color:#cdddff}
+  p{color:#d6e0f5}
+  .lead{font-size:16px;color:#c4d2f0}
+  .card{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:18px 20px;margin:14px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:880px){.grid2{grid-template-columns:1fr}.wrap{grid-template-columns:1fr}nav.toc{display:none}main{padding:24px}}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.6px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#cdddff;font-weight:600}
+  td code,p code,li code{background:var(--code);border:1px solid var(--line);border-radius:5px;
+    padding:1px 5px;font:12.5px/1.4 "SF Mono",ui-monospace,Menlo,Consolas,monospace;color:#bfe0ff}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;
+    font:12.8px/1.55 "SF Mono",ui-monospace,Menlo,Consolas,monospace;color:#c9e3ff}
+  .mermaid{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin:14px 0;text-align:center}
+  .callout{border-left:4px solid var(--accent);background:#101a30;border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0}
+  .callout.warn{border-color:var(--warn);background:#211a0e}
+  .callout.good{border-color:var(--good);background:#0f2018}
+  .callout b{color:#fff}
+  ul.tight{margin:8px 0;padding-left:20px}
+  ul.tight li{margin:4px 0;color:#d6e0f5}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .sev-block{color:var(--bad);font-weight:600}
+  .sev-prereq{color:var(--warn);font-weight:600}
+  .sev-env{color:var(--muted);font-weight:600}
+  .kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0}
+  .kpi .card{text-align:center}
+  .kpi .num{font-size:26px;font-weight:700;color:#fff}
+  .kpi .lbl{font-size:12px;color:var(--muted)}
+  footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:18px;margin-top:30px}
+  .legend{font-size:12px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="toc">
+  <div class="brand">AVD Landing Zone<small>Technical showcase</small></div>
+  <h2>Contents</h2>
+  <a href="#summary">1 · Executive summary</a>
+  <a href="#what">2 · What it is &amp; scope</a>
+  <a href="#arch">3 · Architecture</a>
+  <a href="#modules">4 · Module catalog</a>
+  <a href="#identity">5 · Identity &amp; FSLogix</a>
+  <a href="#security">6 · Security posture</a>
+  <a href="#cicd">7 · CI/CD &amp; OIDC</a>
+  <a href="#governance">8 · Governance &amp; process</a>
+  <a href="#adr">9 · Decision records</a>
+  <a href="#story">10 · The deployment story</a>
+  <a href="#runbook">11 · Operations runbook</a>
+  <a href="#facts">12 · Environment facts</a>
+</nav>
+
+<main>
+  <header class="hero">
+    <h1>Azure Virtual Desktop — Application Landing Zone</h1>
+    <p class="sub">Enterprise-grade AVD delivered as Infrastructure-as-Code: Terraform + Azure Verified Modules, secret-less OIDC CI/CD, deployed and verified end-to-end.</p>
+    <div class="badges">
+      <span class="badge ok">● Deployed &amp; verified — hosts Available</span>
+      <span class="badge tech">Terraform + AVM</span>
+      <span class="badge tech">GitHub Actions · OIDC</span>
+      <span class="badge tech">Microsoft Entra ID join</span>
+      <span class="badge tech">CMK · Private Endpoints</span>
+      <span class="badge tech">Central US</span>
+    </div>
+  </header>
+
+  <!-- 1 -->
+  <section id="summary">
+    <h2>1 · Executive summary</h2>
+    <p class="lead">This repository builds the <b>application landing zone</b> for Azure Virtual Desktop entirely as code — composed from <b>Azure Verified Modules (AVM)</b>, governed by Architecture Decision Records, and delivered through <b>GitHub Actions with OIDC federation (no stored secrets)</b>. It follows the Microsoft AVD Landing Zone design guide and the <code>Azure/avdaccelerator</code> baseline.</p>
+    <div class="kpi">
+      <div class="card"><div class="num">97</div><div class="lbl">resources deployed</div></div>
+      <div class="card"><div class="num">8</div><div class="lbl">composed modules</div></div>
+      <div class="card"><div class="num">7</div><div class="lbl">decision records</div></div>
+      <div class="card"><div class="num">0</div><div class="lbl">stored cloud secrets</div></div>
+    </div>
+    <p>It was not just written and validated — it was <b>applied to a live subscription, verified (both session hosts <code>Available</code> in the host pool), then torn down</b>. That live run surfaced a dozen real-world issues that no amount of <code>terraform validate</code> can catch; each was fixed and is reproducible in the repo. Section&nbsp;10 walks through them — it is the most instructive part of the build.</p>
+  </section>
+
+  <!-- 2 -->
+  <section id="what">
+    <h2>2 · What it is &amp; scope</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">In scope — the application landing zone</h3>
+        <ul class="tight">
+          <li>Spoke network (VNet, NSG, ASG, route table, NAT gateway)</li>
+          <li>FSLogix profile storage (Premium Azure Files, Entra Kerberos)</li>
+          <li>Key Vault (RBAC, private endpoint)</li>
+          <li>AVD control plane: host pool, application group, workspace, autoscale scaling plan</li>
+          <li>Session-host VMs (Entra-joined, agent-registered)</li>
+          <li>Monitoring: Log Analytics + Data Collection Rule + diagnostics</li>
+          <li>Shared services: Compute Gallery + Automation account</li>
+          <li>Remote-state backend &amp; OIDC CI/CD</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Out of scope — the platform landing zone</h3>
+        <ul class="tight">
+          <li>Connectivity subscription (hub, firewall, gateways)</li>
+          <li>Identity platform (Entra ID tenant, domain services)</li>
+          <li>Management subscription &amp; central governance</li>
+          <li>The management-group hierarchy</li>
+        </ul>
+        <p style="margin:10px 0 0;color:var(--muted);font-size:13px">These are a documented <b>prerequisite</b> — an application landing zone sits <i>on top of</i> them and never builds them.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section id="arch">
+    <h2>3 · Architecture</h2>
+    <p>Two Terraform roots with independent lifecycles: a one-time <code>bootstrap/</code> (state backend + identity) and the <code>landing-zones/avd-workload/</code> composition root that creates a <b>workload</b> resource group and a <b>shared-services</b> resource group and calls the eight modules.</p>
+    <div class="mermaid">
+flowchart TB
+  subgraph Platform["Platform landing zone — PREREQUISITE (not built here)"]
+    direction LR
+    HUB["Connectivity<br/>hub · firewall"]
+    IDP["Identity<br/>Microsoft Entra ID"]
+    MGT["Management<br/>central governance"]
+  end
+  subgraph BS["bootstrap/ — one-time root (local state)"]
+    SB["State backend · rg-tfstate-avd-001<br/>CMK Storage (GZRS) · Key Vault · UAMI"]
+    OF["OIDC federation<br/>existing app reg (GitHubActionsApp)"]
+  end
+  subgraph Repo["landing-zones/avd-workload — AVD application landing zone"]
+    direction LR
+    subgraph WL["Workload RG · rg-avd-&lt;env&gt;-cus"]
+      NET["networking<br/>spoke VNet · NSG/ASG · NAT gateway"]
+      KV["security<br/>Key Vault (private endpoint)"]
+      FS["fslogix-storage<br/>Premium Files · Entra Kerberos"]
+      MP["management-plane<br/>host pool · app group · workspace · scaling plan"]
+      SH["session-hosts<br/>VMs · Entra join · AVD agent"]
+    end
+    subgraph SS["Shared-services RG · rg-avd-shared-&lt;env&gt;-cus"]
+      MON["monitoring<br/>Log Analytics · DCR · diagnostics"]
+      SVC["shared-services<br/>Compute Gallery · Automation"]
+    end
+  end
+  HUB -. VNet peering .-> NET
+  IDP -. Entra join .-> SH
+  SH --> MP
+  SH --> FS
+  SH --> MON
+  OF -. authenticates CI .-> Repo
+  Repo -. remote state .-> SB
+    </div>
+    <p class="legend">Reverse-connect: session hosts have no public IPs and no inbound RDP; users connect outward through the AVD control plane. Egress for agents/updates is via the NAT gateway.</p>
+  </section>
+
+  <!-- 4 -->
+  <section id="modules">
+    <h2>4 · Module catalog</h2>
+    <p>Every building block is a <b>version-pinned</b> Azure Verified Module (<code>Azure/avm-res-*</code>); deviations to native <code>azurerm</code> are deliberate and documented.</p>
+    <table>
+      <thead><tr><th>Module</th><th>Resources</th><th>AVM module(s) · version</th></tr></thead>
+      <tbody>
+        <tr><td><code>networking</code></td><td>Spoke VNet, NSG (reverse-connect), ASG, route table, <b>NAT gateway</b>, optional hub peering</td><td>network-virtualnetwork 0.17.1, -networksecuritygroup 0.5.1, -applicationsecuritygroup 0.1.1, -routetable 0.5.0 · NAT gw native</td></tr>
+        <tr><td><code>identity-join</code></td><td>Normalises identity mode → join config (no DCs deployed)</td><td>config-only</td></tr>
+        <tr><td><code>fslogix-storage</code></td><td>Premium Azure Files (Entra Kerberos / <code>AADKERB</code>) + file private endpoint + diagnostics</td><td>storage-storageaccount 0.7.2</td></tr>
+        <tr><td><code>security</code></td><td>Key Vault (RBAC, purge-protected) + private endpoint + diagnostics</td><td>keyvault-vault 0.10.2</td></tr>
+        <tr><td><code>management-plane</code></td><td>Host pool, application group, workspace, autoscale scaling plan, ws↔ag association</td><td>desktopvirtualization-hostpool 0.4.0, -applicationgroup 0.2.1, -workspace 0.2.2, -scalingplan 0.2.1</td></tr>
+        <tr><td><code>session-hosts</code></td><td>VMs (<code>for_each</code>, zone-spread) + AADLoginForWindows + AVD-agent DSC + Azure Monitor Agent</td><td>compute-virtualmachine 0.21.0</td></tr>
+        <tr><td><code>monitoring</code></td><td>Log Analytics workspace + AVD Data Collection Rule + per-host DCR association</td><td>operationalinsights-workspace 0.5.1, insights-datacollectionrule 0.1.0</td></tr>
+        <tr><td><code>shared-services</code></td><td>Azure Compute Gallery + Automation account</td><td>compute-gallery 0.2.0, automation-automationaccount 0.2.0</td></tr>
+      </tbody>
+    </table>
+    <p class="legend">Private DNS zones (<code>privatelink.file.*</code>, <code>privatelink.vaultcore.*</code>) and the NAT gateway are native <code>azurerm</code> — see ADR-0004 / ADR-0007.</p>
+  </section>
+
+  <!-- 5 -->
+  <section id="identity">
+    <h2>5 · Identity &amp; FSLogix</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">Microsoft Entra ID join (ADR-0003)</h3>
+        <p>Session hosts are <b>cloud-only Entra-joined</b> via the <code>AADLoginForWindows</code> VM extension — no domain controllers, no Entra Domain Services deployed here. The <code>identity_mode</code> toggle retains <code>entra-ds</code> / <code>ad-ds</code> options for portability.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">FSLogix on Azure Files</h3>
+        <p>Profile containers live on a <b>Premium FileStorage</b> share reached over a private endpoint, authenticated with <b>Entra Kerberos</b> (<code>directory_service_options = "AADKERB"</code>) — which removes the need for AD DS just to use Azure Files.</p>
+      </div>
+    </div>
+    <p>Extension ordering on each host is explicit (<code>deploy_sequence</code>): <span class="pill">1 · AADLoginForWindows</span> → <span class="pill">2 · AVD-agent DSC (AddSessionHost, <code>aadJoin</code>)</span> → <span class="pill">3 · Azure Monitor Agent</span>. An optional toggle adds the Intune <code>mdmId</code> for auto-enrollment (ADR-0006).</p>
+  </section>
+
+  <!-- 6 -->
+  <section id="security">
+    <h2>6 · Security posture</h2>
+    <table>
+      <thead><tr><th>Control</th><th>Implementation</th></tr></thead>
+      <tbody>
+        <tr><td>Secret-less CI</td><td>OIDC federated credentials — no client secrets stored in GitHub or the repo. Runtime secrets belong in Key Vault.</td></tr>
+        <tr><td>State at rest</td><td>Storage Account: <b>customer-managed key</b> (Key Vault + user-assigned identity), GZRS, blob versioning, <b>shared keys disabled</b> (Entra-ID/RBAC only).</td></tr>
+        <tr><td>Private-only PaaS</td><td>Storage &amp; Key Vault public access disabled; reached via <b>private endpoints</b> + private DNS zones.</td></tr>
+        <tr><td>Network</td><td>NSG codifies AVD <b>reverse-connect</b> (no inbound RDP); session hosts have no public IPs; egress via NAT gateway.</td></tr>
+        <tr><td>Host hardening</td><td><b>Encryption at host</b> (toggle), premium SSD OS disks, system-assigned managed identity, Trusted/secure image.</td></tr>
+        <tr><td>Least-privilege RBAC</td><td>CI principal scoped to <b>Contributor + User Access Administrator</b> (not Owner) — ADR-0005.</td></tr>
+        <tr><td>Deploy controls</td><td>Every apply/destroy is explicit (<code>workflow_dispatch</code>), typed-confirmed, and prod is gated by a required-reviewer GitHub Environment.</td></tr>
+        <tr><td>No committed IDs</td><td>Subscription/tenant IDs are supplied via env / repo variables, never committed; <code>*.tfvars</code> ship as placeholders.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 7 -->
+  <section id="cicd">
+    <h2>7 · CI/CD &amp; OIDC</h2>
+    <p>Authentication is <b>GitHub OIDC → Microsoft Entra workload-identity federation</b>: GitHub mints a short-lived token, Entra exchanges it for an Azure access token. No secret ever exists. Three federated-credential subjects back the three workflows.</p>
+    <div class="mermaid">
+flowchart LR
+  PR["Pull request"] --> PLAN["plan-on-pr<br/>fmt · validate · tflint · plan (dev)"]
+  UI1["Actions UI"] --> MD["manual-deploy<br/>env (dev/prod) × action (plan/apply/destroy)<br/>typed confirmation"]
+  UI2["Actions UI"] --> CLEAN["cleanup-demo<br/>az group delete (rg-avd-*)<br/>type subscription ID"]
+  MD -->|dev · any plan| OIDC
+  MD -->|prod apply/destroy| GATE["production Environment<br/>required reviewer"]
+  CLEAN --> GATE
+  GATE --> OIDC["Azure login (OIDC)<br/>federated · no secrets"]
+  OIDC --> AZ["Azure Resource Manager"]
+  PLAN --> OIDC
+    </div>
+    <table>
+      <thead><tr><th>Workflow</th><th>Trigger</th><th>Purpose &amp; guards</th></tr></thead>
+      <tbody>
+        <tr><td><code>plan-on-pr.yml</code></td><td>Pull request → main</td><td>Read-only gate: <code>fmt</code> + <code>validate</code> + tflint + <code>plan</code> (dev). No apply.</td></tr>
+        <tr><td><code>manual-deploy.yml</code></td><td>Manual dispatch</td><td>The only apply path. Choose env + action; apply/destroy need a typed env-name confirmation; prod runs under the <code>production</code> gate. <i>No merge-triggered apply</i> (ADR-0007).</td></tr>
+        <tr><td><code>cleanup-demo.yml</code></td><td>Manual dispatch</td><td>Destructive demo reset via <code>az group delete</code> of <code>rg-avd-*</code> (optional state-backend toggle). Must type the subscription ID; prod gate. Sidesteps AVD teardown ordering.</td></tr>
+      </tbody>
+    </table>
+    <p>Inputs are surfaced through <code>env:</code> vars (never inline <code>${{ inputs.* }}</code> in shell) to eliminate script-injection. The bootstrap state backend is created once and intentionally <b>outlives</b> the workloads it tracks.</p>
+  </section>
+
+  <!-- 8 -->
+  <section id="governance">
+    <h2>8 · Governance &amp; process</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">Four collaborating roles</h3>
+        <p>The build runs through four subagent roles in hand-off order:</p>
+        <ul class="tight">
+          <li><b>Cloud Solutions Architect</b> — topology, identity/network model, ADRs</li>
+          <li><b>Cloud Engineer</b> — modules, composition root, local validation</li>
+          <li><b>DevSecOps Engineer</b> — workflows, OIDC, state backend, posture</li>
+          <li><b>Code Reviewer</b> — correctness + AVM/version + security gate</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Enforced review gate (not just prose)</h3>
+        <p>The review/test gate is enforced by <b>hooks</b>, not memory:</p>
+        <ul class="tight">
+          <li><code>.githooks/pre-commit</code> hard-fails commits on <code>fmt</code>/<code>validate</code> errors</li>
+          <li>A Claude Code <code>PreToolUse</code> hook <b>blocks <code>git commit</code></b> unless the exact working-tree content has a recorded code-review approval (a tree-hash stamp; any edit invalidates it)</li>
+        </ul>
+      </div>
+    </div>
+    <p>Other guardrails: <b>verify-before-write</b> (every AVM module + argument confirmed against the registry before use), <b>pin every version</b>, <b>one section per session</b>, <b>stop-and-ask</b> on ambiguity, and a running <code>WORKLOG.md</code> as the cross-session source of truth.</p>
+  </section>
+
+  <!-- 9 -->
+  <section id="adr">
+    <h2>9 · Architecture Decision Records</h2>
+    <table>
+      <thead><tr><th>ADR</th><th>Decision</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>0001</td><td>Terraform + AVM only (Bicep dropped); reference layout; GitHub Actions OIDC; four roles</td><td>One maintained stack, tested building blocks, no secrets</td></tr>
+        <tr><td>0002</td><td>Bootstrap layer: CMK state backend + OIDC identity (local state, run once)</td><td>Encrypted, versioned, recoverable state; secret-less CI</td></tr>
+        <tr><td>0003</td><td>Session-host identity = Microsoft Entra ID join → FSLogix Entra Kerberos</td><td>Cloud-native, no DC infrastructure</td></tr>
+        <tr><td>0004</td><td>Native <code>azurerm</code> private DNS zones (not the AVM pdns module)</td><td>Avoids extra provider deps for a trivial resource</td></tr>
+        <tr><td>0005</td><td>CI principal scoped Owner → <b>Contributor + User Access Administrator</b></td><td>Least privilege while still able to assign roles</td></tr>
+        <tr><td>0006</td><td>Intune integration = auto-enroll hook only; config plane out of scope</td><td>No scope creep into a Graph-based stack AVM can't cover</td></tr>
+        <tr><td>0007</td><td>Deploys are explicit (<code>workflow_dispatch</code>), not merge-triggered (removed <code>apply-on-merge</code>)</td><td>Every deploy is a confirmed action; matches destroy-first cadence</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 10 -->
+  <section id="story">
+    <h2>10 · The deployment story — what a real <code>apply</code> taught us</h2>
+    <p class="lead">The build passed <code>terraform validate</code> long before it could actually deploy. Static analysis checks syntax, types, and provider schemas — it cannot see runtime API behaviour, RBAC propagation, tenant policy, quota, or provider quirks. The first live <code>apply</code> reached <b>86 of 97 resources</b> before the first real wall; here is the full set of issues and the fix for each.</p>
+    <table>
+      <thead><tr><th>#</th><th>Class</th><th>Symptom</th><th>Root cause → fix</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="sev-block">Code</td><td>Storage rejected the deployer IP allow-list (<code>/32</code>)</td><td>Storage <code>ip_rules</code> take bare IPs, not <code>/32</code> (KV was stripped, Storage wasn't) → shared <code>local.ip_rules</code> strips <code>/32</code> for both</td></tr>
+        <tr><td>2</td><td class="sev-env">Env</td><td>ARM writes blocked: <code>RequestDisallowedByAzure ... MFA</code></td><td>Tenant Conditional Access requires MFA for user ARM access; OIDC/federation can't authenticate a <i>local</i> run → authenticate locally as the <b>service principal</b> (federation is for CI)</td></tr>
+        <tr><td>3</td><td class="sev-env">Env</td><td><code>terraform</code> args mangled by PowerShell</td><td>Windows PowerShell 5.1 native-arg quirk → pass flags via array splat <code>&amp; terraform @args</code></td></tr>
+        <tr><td>4</td><td class="sev-block">Code</td><td><code>KeyBasedAuthenticationNotPermitted</code> creating the state SA</td><td>Shared keys disabled, but the provider polled the blob plane with key auth → <code>storage_use_azuread = true</code></td></tr>
+        <tr><td>5</td><td class="sev-block">Code</td><td>Blob-data role missing during the SA's post-create poll</td><td>Role was scoped to the SA and created <i>after</i> it → moved to <b>RG scope, created before</b> the SA, with a propagation wait</td></tr>
+        <tr><td>6</td><td class="sev-block">Code</td><td>State lock failed: <code>BlobImmutableDueToPolicy</code></td><td>A WORM immutability policy blocks per-apply state overwrites — even while "unlocked" → <b>removed it</b>; blob versioning provides recovery instead</td></tr>
+        <tr><td>7</td><td class="sev-block">Code</td><td>CMK flip-flopped to Microsoft-managed keys every apply</td><td>Classic <code>azurerm</code> SA-vs-separate-CMK-resource diff → <code>lifecycle { ignore_changes = [customer_managed_key] }</code></td></tr>
+        <tr><td>8</td><td class="sev-block">Code</td><td>Placeholder IDs would win over CI variables</td><td><code>-var-file</code> outranks <code>TF_VAR_*</code> → <b>removed</b> subscription/tenant IDs from tfvars (env-only)</td></tr>
+        <tr><td>9</td><td class="sev-block">Code</td><td>5× <code>Invalid for_each argument</code> on a greenfield plan</td><td>Maps keyed on apply-time-unknown values → <b>static keys</b> (diagnostics ×4), a static <code>enable_asg_association</code> bool, and <code>one(values(...))</code> instead of <code>try()</code> for the DCR association</td></tr>
+        <tr><td>10</td><td class="sev-block">Code</td><td><code>workspace_id</code>: object where string required</td><td>AVM workspace 0.2.2 <code>resource_id</code> output is the whole object → <code>.resource_id.id</code></td></tr>
+        <tr><td>11</td><td class="sev-prereq">Prereq</td><td>VM create 400: <code>EncryptionAtHost feature not enabled</code></td><td>Subscription feature not registered → <code>az feature register --namespace Microsoft.Compute --name EncryptionAtHost</code></td></tr>
+        <tr><td>12</td><td class="sev-prereq">Prereq</td><td>Scaling plan 400: AVD service lacks permission</td><td>Grant the Azure Virtual Desktop first-party SP <b>Desktop Virtualization Power On Off Contributor</b></td></tr>
+        <tr><td>13</td><td class="sev-prereq">Prereq</td><td>VM create 409: <code>standardDASv5Family quota = 0</code></td><td>PoC sub has no Dasv5 quota → switched size to <code>Standard_D4as_v4</code> (within the regional 10-vCPU cap)</td></tr>
+        <tr><td>14</td><td class="sev-block">Code</td><td>DSC agent: <code>Unable to connect to the remote server</code></td><td>Azure default outbound access is retired → session hosts had no egress → added a <b>NAT gateway</b> on the subnet</td></tr>
+        <tr><td>15</td><td class="sev-block">Code</td><td>DSC agent: <code>parameter 'aadJoin' cannot be found</code></td><td>The "always-latest" <code>Configuration.zip</code> dropped <code>aadJoin</code> (RDS-Templates #598) → pinned <code>Configuration_1.0.02627.270.zip</code> (agent self-updates after registration)</td></tr>
+        <tr><td>16</td><td class="sev-env">Ops</td><td>Destroy stuck: stopped-VM extensions + orphaned sessionHosts</td><td>Autoscale deallocates hosts (extensions can't delete while stopped) and leaves sessionHost objects → start hosts + force-clear sessionHosts via REST; <code>cleanup-demo</code> uses <code>az group delete</code> to avoid this entirely</td></tr>
+      </tbody>
+    </table>
+    <div class="callout good"><b>The takeaway for the demo:</b> a green <code>plan</code> is necessary but not sufficient. A real <code>apply</code> against a real tenant is the gate that catches auth/MFA, RBAC propagation, provider quirks, subscription features, quota, egress, and vendor-artifact drift. Everything above is now fixed in code and reproducible — the landing zone went from <i>valid</i> to genuinely <i>deployable</i>.</div>
+  </section>
+
+  <!-- 11 -->
+  <section id="runbook">
+    <h2>11 · Operations runbook</h2>
+    <h3>One-time bootstrap</h3>
+    <pre>cd bootstrap
+terraform init &amp;&amp; terraform apply -var-file=terraform.tfvars   # creates rg-tfstate-avd-001
+# → wire GitHub repo Variables: AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID
+# → add federated credentials (main ref, pull_request, environment:production) to the app reg</pre>
+    <h3>Deploy / teardown (CI — the normal path)</h3>
+    <p>Actions → <b>manual-deploy</b> → Run workflow → pick <code>environment</code> (dev/prod) + <code>action</code> (plan/apply/destroy); for apply/destroy type the environment name to confirm. Prod pauses at the <code>production</code> reviewer gate.</p>
+    <h3>Local (driver) deploy</h3>
+    <pre>cd landing-zones/avd-workload
+terraform init -backend-config=../../envs/dev.backend.hcl
+terraform plan  -var-file=../../envs/dev.tfvars
+terraform apply -var-file=../../envs/dev.tfvars</pre>
+    <h3>Demo reset</h3>
+    <p>Actions → <b>cleanup-demo</b> → type the subscription ID to confirm; optionally include the state backend. Brute-force <code>az group delete</code> of <code>rg-avd-*</code> — fast and AVD-teardown-safe.</p>
+    <div class="callout warn"><b>dev ↔ prod on one PoC subscription:</b> Central US is capped at <b>10 total vCPUs</b> and dev already uses 8, so the two environments are mutually exclusive — <b>destroy dev before applying prod</b>. The state backend (<code>rg-tfstate-avd-001</code>) is a separate root and is intentionally retained across workload teardowns.</div>
+  </section>
+
+  <!-- 12 -->
+  <section id="facts">
+    <h2>12 · Environment facts</h2>
+    <table>
+      <tbody>
+        <tr><th>Subscription</th><td>sub-avd-poc-01</td></tr>
+        <tr><th>Region</th><td>Central US (<code>centralus</code> / <code>cus</code>)</td></tr>
+        <tr><th>Identity model</th><td>Microsoft Entra ID join (cloud-only)</td></tr>
+        <tr><th>Naming</th><td><code>&lt;type&gt;-avd-&lt;env&gt;-cus</code> · e.g. <code>rg-avd-dev-cus</code>, <code>vdpool-avd-dev-cus</code>, <code>vmavddevcus01</code></td></tr>
+        <tr><th>State backend</th><td><code>rg-tfstate-avd-001</code> → <code>sttfstatetd8ci5</code> (container <code>tfstate</code>, key per env)</td></tr>
+        <tr><th>CI identity</th><td>App registration <code>GitHubActionsApp</code> · OIDC federation · Contributor + User Access Administrator</td></tr>
+        <tr><th>Toolchain</th><td>Terraform ≥ 1.10 (CI pins 1.15.6) · <code>azurerm</code> ≥ 4 · <code>azuread</code> ≥ 3 (bootstrap only) · GitHub Actions</td></tr>
+      </tbody>
+    </table>
+    <footer>
+      Generated technical showcase for the AVD Application Landing Zone. Authoritative sources in-repo:
+      <code>ARCHITECTURE.md</code>, <code>DECISIONS.md</code>, <code>WORKLOG.md</code>, <code>docs/</code>. Diagrams render via Mermaid (requires network access at view time).
+    </footer>
+  </section>
+</main>
+</div>
+</body>
+</html>
