@@ -361,3 +361,37 @@ random suffix, and that is exactly what makes re-bootstrap non-reproducible.
   is the more stable, earlier-known input (the RG ID embeds the same subscription ID plus a fixed name),
   and is available before any resource is created. Folding the RG name in is the documented fallback if a
   collision ever occurs.
+
+---
+
+## ADR-0009 — Reusable landing-zone build kit
+
+- **Status:** Accepted
+- **Date:** 2026-06-24
+- **Deciders:** Project owner + Cloud Solutions Architect
+
+### Context
+This AVD application landing zone was taken end-to-end — built, deployed live, verified, torn down — which
+surfaced ~16 runtime/prerequisite/CI issues invisible to `terraform validate`, plus a proven set of
+patterns (AVM composition, OIDC CI, deterministic-named CMK state backend, the four workflows, the enforced
+review gate, the 3-role hand-off). The next project is a **security landing zone**; we want the process and
+hard-won lessons to carry over, streamlined, rather than be re-derived.
+
+### Decision
+Capture the learnings as a **self-contained, generalized `landing-zone-kit/`** in this repo: process docs
+(operating contract, 3-role hand-off, review gate), a **decision framework** (the recurring forks +
+recommended defaults), **`LESSONS.md`** (the live-apply reality checklist — the centerpiece), and a
+**templates guide** pointing at the proven repo artifacts (`bootstrap/`, `envs/`, `.github/workflows/`,
+`scripts/preflight.sh`, hooks) with a parameterization checklist. AVD stays as the worked example; the kit
+itself is generic. It can later be promoted to a GitHub template repo.
+
+### Consequences
+- **Pro:** the next LZ starts from a battle-tested baseline; the failed-apply discovery loop is pre-empted;
+  process + gate carry over unchanged.
+- **Con:** the kit is documentation that must be kept honest as the patterns evolve (treat it as living).
+
+### Alternatives considered
+- **Separate GitHub template repo now** — better long-term (`gh repo create --template`) but needs a new
+  repo; deferred — build the kit in-repo first, promote later.
+- **Docs-only, no kit structure** — rejected: less of a turnkey starter; the owner wanted reusable configs
+  + framework, not just prose.
