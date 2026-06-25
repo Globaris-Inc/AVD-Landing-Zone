@@ -67,6 +67,28 @@
 
 ## Sessions
 
+### Session 2026-06-24 (y) — Reusable landing-zone build kit (ADR-0009)
+
+Distilled the whole AVD build into a self-contained, generalized `landing-zone-kit/` so the next LZ (a
+**security** landing zone) starts from a battle-tested baseline. AVD stays the worked example; the kit is
+generic. Architect-led synthesis — the architect subagent hit a session limit (resets 10pm), so authored
+directly with full build context; role agents can re-review after reset.
+
+- `landing-zone-kit/README.md` — what the kit is + how to start a new LZ + the role map.
+- `landing-zone-kit/LESSONS.md` — **the centerpiece**: the live-apply reality checklist (the ~16 gotchas
+  generalized as symptom → why static review/validate misses it → guardrail; grouped Code / Subscription-
+  prereq / Auth-env / CI).
+- `landing-zone-kit/OPEN-QUESTIONS-template.md` — the recurring decision forks (Q1–Q13) + recommended defaults.
+- `landing-zone-kit/process.md` — operating contract, 3-role hand-off, enforced review gate.
+- `landing-zone-kit/templates.md` — which repo artifacts to copy + parameterization checklist + order of ops.
+- `DECISIONS.md` — **ADR-0009** (reusable kit).
+
+Docs only — no Terraform/workflow change. Self-reviewed (subagents session-limited).
+
+**Suggested commit:** `docs(kit): add reusable landing-zone build kit — process, lessons, decision framework (ADR-0009)`
+
+---
+
 ### Session 2026-06-24 (x) — CI Terraform-version fix + gate hardening + firewalled-state CI handling
 
 Triggered by the first real CI run failing on `Unsupported Terraform Core version` (AVM storage/compute
