@@ -45,7 +45,8 @@ change is DevSecOps.
 Don't rely on memory or prose for "we reviewed it" — **enforce it with hooks.**
 
 - **`.githooks/pre-commit`** (enable: `git config core.hooksPath .githooks`) — hard-fails a commit on
-  `terraform fmt`/`validate` errors and best-effort `actionlint` on workflow changes.
+  `terraform fmt`/`validate` errors and best-effort `actionlint` on workflow changes. *(Not shipped in this
+  public repo — recreate it locally; `scripts/preflight.sh` covers the same checks.)*
 - **A `PreToolUse` hook** blocks `git commit` unless the exact working-tree content has a recorded
   code-review approval stamp (a tree-hash; any later edit invalidates it). A conscious override exists for
   trivial no-code commits.
