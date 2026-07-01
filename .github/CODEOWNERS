@@ -1,0 +1,14 @@
+# Code owners — auto-requested as reviewers on matching PRs.
+# https://docs.github.com/articles/about-code-owners
+
+# Default owner for everything in the repo.
+*                       @teeeke
+
+# CI/CD, OIDC, and security posture.
+/.github/               @teeeke
+/bootstrap/             @teeeke
+
+# Architecture, decisions, and the reusable build kit.
+/DECISIONS.md           @teeeke
+/ARCHITECTURE.md        @teeeke
+/landing-zone-kit/      @teeeke
