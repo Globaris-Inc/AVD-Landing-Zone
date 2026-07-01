@@ -32,10 +32,15 @@ bootstrap/terraform.tfvars
 *.pfx
 *.key
 
-# ---- Claude Code (local-only) ----
-.claude/settings.local.json
-# Review-gate approval stamp — local session state, not shared.
-.claude/review-gate
+# ---- Claude Code / AI assistants (local-only) ----
+.claude/
+.githooks/
+
+# Internal process / AI prompt files (not part of the public deliverable)
+docs/CLAUDE.md
+docs/PROMPT.md
+docs/WORKLOG.md
+docs/review-gate.md
 
 # ---- Editors / OS ----
 .vscode/*
