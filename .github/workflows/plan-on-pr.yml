@@ -108,7 +108,7 @@ jobs:
 
       # tflint is best-effort: install + run, but a lint finding must not block the plan gate.
       - name: Setup tflint
-        uses: terraform-linters/setup-tflint@v4
+        uses: terraform-linters/setup-tflint@v6
         with:
           tflint_version: latest
 
