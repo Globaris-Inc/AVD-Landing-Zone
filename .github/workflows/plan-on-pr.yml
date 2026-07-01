@@ -38,6 +38,11 @@ jobs:
     name: terraform plan (dev)
     runs-on: ubuntu-latest
 
+    # Same-repo PRs only. Fork PRs cannot (and must not) obtain the OIDC token / Azure access,
+    # so this job SKIPS on forks — external contributors are gated by the credential-free
+    # `validate` workflow instead. (A skipped required check is neutral, not a failure.)
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
     # Run all terraform steps inside the only deployable root module.
     defaults:
       run:
