@@ -1,0 +1,82 @@
+# validate.yml — credential-free PR gate. Runs on EVERY pull request (including forks)
+# and on push to main. Needs NO Azure credentials and NO secrets, so external
+# contributors' PRs get a real green check (the OIDC plan/apply workflows only run on
+# same-repo branches).
+name: validate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Least privilege: read-only. No id-token, no secrets, no backend, no plan/apply.
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TERRAFORM_VERSION: "1.15.6" # matches .terraform-version + the committed lock files
+
+jobs:
+  fmt:
+    name: terraform fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive -diff
+
+  validate:
+    name: validate (${{ matrix.root }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        root:
+          - bootstrap
+          - landing-zones/avd-workload
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: init (no backend) + validate
+        working-directory: ${{ matrix.root }}
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate -no-color
+
+  tflint:
+    name: tflint (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true # lint findings surface but don't block the gate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.53.0
+      - run: |
+          tflint --init
+          tflint --recursive -f compact
+
+  gitleaks:
+    name: secret scan (gitleaks, full history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so gitleaks scans every commit, not just the tip
+      - name: gitleaks detect
+        run: |
+          VER="8.21.2"
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks detect --source . --no-banner --redact --verbose

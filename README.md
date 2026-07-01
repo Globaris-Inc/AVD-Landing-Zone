@@ -1,5 +1,9 @@
 # Azure Virtual Desktop — Landing Zone (IaC)
 
+[![validate](https://github.com/teeeke/AVD-Landing-Zone/actions/workflows/validate.yml/badge.svg)](https://github.com/teeeke/AVD-Landing-Zone/actions/workflows/validate.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Terraform](https://img.shields.io/badge/Terraform-1.15.6-7B42BC?logo=terraform&logoColor=white)
+
 Terraform Infrastructure-as-Code for an **Azure Virtual Desktop (AVD) application landing zone**,
 following the Microsoft [AVD Landing Zone design guide](https://learn.microsoft.com/en-us/azure/architecture/landing-zones/azure-virtual-desktop/design-guide)
 and the [`Azure/avdaccelerator`](https://github.com/Azure/avdaccelerator) baseline. Composed entirely from
@@ -64,14 +68,14 @@ Composition root: [`landing-zones/avd-workload/`](landing-zones/avd-workload).
 ## Repository layout
 
 ```
-ARCHITECTURE.md  CLAUDE.md  PROMPT.md  WORKLOG.md  DECISIONS.md  OPEN-QUESTIONS.md   Governance
-.github/workflows/    plan-on-pr.yml (PR plan), manual-deploy.yml (dispatch plan/apply/destroy)
+README · ARCHITECTURE · DECISIONS · SECURITY · CONTRIBUTING · CODE_OF_CONDUCT · LICENSE   (top level)
+.github/workflows/    validate.yml (creds-free PR gate) · plan-on-pr.yml (same-repo plan) · manual-deploy.yml
 bootstrap/            one-time: OIDC federation + Terraform state backend (CMK)
 modules/              the eight AVD modules above
 landing-zones/avd-workload/   composition root (calls the modules)
 envs/                 dev/prod tfvars + backend.hcl (placeholders)
-policies/             optional guardrails
-docs/                 naming/tagging, role workflow, acceptance
+landing-zone-kit/     reusable build kit (lessons, decision framework, public-collab standard)
+docs/                 build docs (CLAUDE, PROMPT, WORKLOG, OPEN-QUESTIONS) + naming/tagging, workflow, acceptance
 ```
 
 ## Prerequisites
@@ -133,7 +137,7 @@ Common knobs in `envs/*.tfvars` (full list: [`landing-zones/avd-workload/variabl
 
 ## Before the first apply
 
-- Open questions OQ-006/007/008 are all **resolved** ([OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)). The one
+- Open questions OQ-006/007/008 are all **resolved** ([OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md)). The one
   operational step that remains: register `Microsoft.Compute/EncryptionAtHost` on the subscription
   (`az feature register --namespace Microsoft.Compute --name EncryptionAtHost`), or set
   `session_host_encryption_at_host = false` in `envs/*.tfvars` if it isn't registered.
@@ -149,13 +153,20 @@ terraform destroy -var-file=../../envs/dev.tfvars
 cd ../../bootstrap && terraform destroy -var-file=terraform.tfvars
 ```
 
+## Contributing
+
+Contributions are welcome — please read [CONTRIBUTING.md](CONTRIBUTING.md), the
+[Code of Conduct](CODE_OF_CONDUCT.md), and the [Security Policy](SECURITY.md). Every PR gets a
+credential-free **`validate`** check (fmt + per-root `validate` + lint + secret scan) that runs even on
+forks; the OIDC plan/apply workflows run only on maintainer branches. Licensed under [MIT](LICENSE).
+
 ## Documentation
 
 | Doc | What's in it |
 |-----|--------------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Design-area (A–I) mapping, topology, AVM version matrix, RTO/RPO |
 | [DECISIONS.md](DECISIONS.md) | Architecture decision records (ADRs) |
-| [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) | Open/resolved decisions needing input |
+| [OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Open/resolved decisions needing input |
 | [bootstrap/README.md](bootstrap/README.md) | One-time OIDC + state-backend setup |
 | [docs/acceptance.md](docs/acceptance.md) | Pre-apply checklist + acceptance criteria |
 | [docs/naming-and-tagging.md](docs/naming-and-tagging.md) | CAF naming + minimum tags |
