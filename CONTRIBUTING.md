@@ -32,8 +32,8 @@ terraform fmt -recursive
 bash scripts/preflight.sh        # version-floor check + isolated init/validate + actionlint
 ```
 
-The repo has an **enforced review gate** (`.githooks/pre-commit` + a commit hook) — see
-[`docs/review-gate.md`](docs/review-gate.md). Local `plan`/`apply` require your own Azure subscription and an
+`scripts/preflight.sh` runs the same checks CI does (version-floor, isolated `init`/`validate`,
+`actionlint`) — run it before pushing. Local `plan`/`apply` require your own Azure subscription and an
 OIDC/service-principal setup (see [`bootstrap/`](bootstrap)); you do **not** need Azure access to contribute
 code — the CI **validate** gate is credential-free and runs on every PR (including forks).
 

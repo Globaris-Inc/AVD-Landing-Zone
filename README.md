@@ -75,7 +75,7 @@ modules/              the eight AVD modules above
 landing-zones/avd-workload/   composition root (calls the modules)
 envs/                 dev/prod tfvars + backend.hcl (placeholders)
 landing-zone-kit/     reusable build kit (lessons, decision framework, public-collab standard)
-docs/                 build docs (CLAUDE, PROMPT, WORKLOG, OPEN-QUESTIONS) + naming/tagging, workflow, acceptance
+docs/                 build docs: OPEN-QUESTIONS (decision log), naming/tagging, acceptance, solution showcase
 ```
 
 ## Prerequisites
@@ -170,6 +170,6 @@ forks; the OIDC plan/apply workflows run only on maintainer branches. Licensed u
 | [bootstrap/README.md](bootstrap/README.md) | One-time OIDC + state-backend setup |
 | [docs/acceptance.md](docs/acceptance.md) | Pre-apply checklist + acceptance criteria |
 | [docs/naming-and-tagging.md](docs/naming-and-tagging.md) | CAF naming + minimum tags |
-| [docs/workflow.md](docs/workflow.md) | The four-role hand-off workflow |
+| [landing-zone-kit/process.md](landing-zone-kit/process.md) | The role hand-off workflow + review gate (reusable kit) |
 
 
