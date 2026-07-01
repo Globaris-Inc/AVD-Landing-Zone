@@ -23,8 +23,9 @@ kit applies.
 | [templates.md](templates.md) | Which existing repo artifacts to copy + the parameterization checklist |
 
 The **code templates** (the things you copy) are the proven repo artifacts themselves — see
-[templates.md](templates.md): `bootstrap/`, `envs/`, `.github/workflows/`, `scripts/preflight.sh`,
-`.githooks/pre-commit`.
+[templates.md](templates.md): `bootstrap/`, `envs/`, `.github/workflows/`, `scripts/preflight.sh`.
+(Local-only tooling — the `pre-commit` hook and AI-assistant hooks/agents — is **not shipped** in this
+public repo; [process.md](process.md) describes what it does so you can recreate it.)
 
 ---
 
