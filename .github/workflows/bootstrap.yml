@@ -86,7 +86,7 @@ jobs:
           echo "Confirmed subscription $ARM_SUBSCRIPTION_ID."
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3

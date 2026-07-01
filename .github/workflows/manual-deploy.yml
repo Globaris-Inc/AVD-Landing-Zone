@@ -83,7 +83,7 @@ jobs:
           echo "Confirmed: $TF_ACTION on $TF_ENV."
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
