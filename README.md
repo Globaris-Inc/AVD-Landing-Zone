@@ -75,7 +75,7 @@ modules/              the eight AVD modules above
 landing-zones/avd-workload/   composition root (calls the modules)
 envs/                 dev/prod tfvars + backend.hcl (placeholders)
 landing-zone-kit/     reusable build kit (lessons, decision framework, public-collab standard)
-docs/                 build docs: OPEN-QUESTIONS (decision log), naming/tagging, acceptance, solution showcase
+docs/                 build docs: naming/tagging, acceptance
 ```
 
 ## Prerequisites
@@ -137,7 +137,7 @@ Common knobs in `envs/*.tfvars` (full list: [`landing-zones/avd-workload/variabl
 
 ## Before the first apply
 
-- Open questions OQ-006/007/008 are all **resolved** ([OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md)). The one
+- There are no open design questions (resolved decisions are recorded in [DECISIONS.md](DECISIONS.md)). The one
   operational step that remains: register `Microsoft.Compute/EncryptionAtHost` on the subscription
   (`az feature register --namespace Microsoft.Compute --name EncryptionAtHost`), or set
   `session_host_encryption_at_host = false` in `envs/*.tfvars` if it isn't registered.
@@ -166,7 +166,6 @@ forks; the OIDC plan/apply workflows run only on maintainer branches. Licensed u
 |-----|--------------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Design-area (A–I) mapping, topology, AVM version matrix, RTO/RPO |
 | [DECISIONS.md](DECISIONS.md) | Architecture decision records (ADRs) |
-| [OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Open/resolved decisions needing input |
 | [bootstrap/README.md](bootstrap/README.md) | One-time OIDC + state-backend setup |
 | [docs/acceptance.md](docs/acceptance.md) | Pre-apply checklist + acceptance criteria |
 | [docs/naming-and-tagging.md](docs/naming-and-tagging.md) | CAF naming + minimum tags |
