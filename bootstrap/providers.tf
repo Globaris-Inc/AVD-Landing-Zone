@@ -20,11 +20,11 @@ terraform {
     }
     azuread = {
       source  = "hashicorp/azuread"
-      version = "~> 3.8.0"
+      version = "~> 3.10.0"
     }
     time = {
       source  = "hashicorp/time"
-      version = "~> 0.13.1"
+      version = "~> 0.14.2"
     }
   }
 }

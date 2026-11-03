@@ -26,8 +26,8 @@ jobs:
     name: terraform fmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
@@ -43,8 +43,8 @@ jobs:
           - bootstrap
           - landing-zones/avd-workload
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
@@ -59,8 +59,8 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true # lint findings surface but don't block the gate
     steps:
-      - uses: actions/checkout@v4
-      - uses: terraform-linters/setup-tflint@v4
+      - uses: actions/checkout@v7
+      - uses: terraform-linters/setup-tflint@v5
         with:
           tflint_version: v0.53.0
       - run: |
@@ -71,7 +71,7 @@ jobs:
     name: secret scan (gitleaks, full history)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history so gitleaks scans every commit, not just the tip
       - name: gitleaks detect

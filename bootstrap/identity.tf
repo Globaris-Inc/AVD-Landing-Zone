@@ -13,8 +13,6 @@
 # subscription RBAC below are skipped (reuse an existing app registration instead — wire its RBAC and
 # federated credentials separately). The deployer's state-account data-plane role is always created.
 
-data "azuread_client_config" "current" {}
-
 locals {
   # Grant the CI principal access to the workload subscription and, if set, shared-services.
   target_subscription_ids = toset(compact([
