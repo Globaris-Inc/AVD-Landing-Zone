@@ -38,6 +38,8 @@ bootstrap/terraform.tfvars
 
 # Internal process / AI prompt files (not part of the public deliverable)
 docs/CLAUDE.md
+docs/OPEN-QUESTIONS.md
+docs/solution-showcase.html
 docs/PROMPT.md
 docs/WORKLOG.md
 docs/review-gate.md

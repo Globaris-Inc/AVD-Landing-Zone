@@ -13,7 +13,7 @@ deploy a real, gated, secret-less pipeline + state backend out of the box.
 | Review gate | `scripts/preflight.sh` (shipped); `.githooks/pre-commit` + AI-assistant hooks/agents (local-only, **not shipped** — recreate per [process.md](process.md) §3) | High — generic |
 | Composition root | `landing-zones/<workload>/` | Pattern — replace the module wiring with your LZ's modules |
 | Modules | `modules/*` | **Example only** — these are AVD-specific; replace with your LZ's modules |
-| Governance | `DECISIONS.md`, `docs/OPEN-QUESTIONS.md`, `ARCHITECTURE.md` (shipped); `CLAUDE.md`, `PROMPT.md`, `WORKLOG.md` (author fresh per [process.md](process.md)) | High — re-section `PROMPT.md` for the new LZ; seed `OPEN-QUESTIONS.md` from [the decision framework](OPEN-QUESTIONS-template.md) |
+| Governance | `DECISIONS.md`, `ARCHITECTURE.md` (shipped); `CLAUDE.md`, `PROMPT.md`, `WORKLOG.md` (author fresh per [process.md](process.md)) | High — re-section `PROMPT.md` for the new LZ; seed `OPEN-QUESTIONS.md` from [the decision framework](OPEN-QUESTIONS-template.md) |
 
 ## Parameterization checklist (what to change for a new LZ)
 
